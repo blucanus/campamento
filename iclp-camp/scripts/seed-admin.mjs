@@ -1,8 +1,12 @@
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("Missing MONGODB_URI");
+
 
 const UserSchema = new mongoose.Schema({
   name: String,

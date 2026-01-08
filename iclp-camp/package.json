@@ -5,6 +5,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cookie": "^1.1.1",
+    "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
@@ -26,11 +27,10 @@
     "typescript": "^5"
   },
   "scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "seed": "node scripts/seed-admin.mjs",
-  "lint": "eslint"
-}
-
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "seed": "node scripts/seed-admin.mjs",
+    "lint": "eslint"
+  }
 }
