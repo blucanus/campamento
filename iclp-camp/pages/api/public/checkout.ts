@@ -75,5 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   doc.payment.preferenceId = pref.id;
   await doc.save();
 
-  res.json({ init_point: pref.init_point });
+  res.json({ init_point: pref.sandbox_init_point || pref.init_point });
+
 }
