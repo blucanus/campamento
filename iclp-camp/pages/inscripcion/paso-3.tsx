@@ -18,16 +18,36 @@ export default function Paso3() {
   }, [step1, attendees]);
 
   async function pagar() {
-    setLoading(true);
+  setLoading(true);
+  try {
     const body = { step1, attendees };
     const r = await fetch("/api/public/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
-    const j = await r.json();
+
+    const j = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      alert(j.error || "Error al iniciar el pago. Revisá logs en Vercel.");
+      setLoading(false);
+      return;
+    }
+
+    if (!j.init_point) {
+      alert("No se recibió init_point de Mercado Pago.");
+      setLoading(false);
+      return;
+    }
+
     window.location.href = j.init_point;
+  } catch (err: any) {
+    alert("Error de red / servidor al iniciar el pago.");
+    setLoading(false);
   }
+}
+
 
   if (!step1) {
     return (
