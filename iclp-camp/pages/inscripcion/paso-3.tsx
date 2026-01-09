@@ -1,65 +1,81 @@
-import { computeTotalARS } from "@/lib/pricing";
-
 import Layout from "@/components/Layout";
-
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { computeTotalARS } from "@/lib/pricing";
 
 export default function Paso3() {
   const [step1, setStep1] = useState<any>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
-  const pricing = step1 ? computeTotalARS(step1, attendees) : null;
-
   const [loading, setLoading] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>(""); // por si en el futuro querés QR, hoy no se usa
 
   useEffect(() => {
     setStep1(JSON.parse(localStorage.getItem("step1") || "null"));
     setAttendees(JSON.parse(localStorage.getItem("step2") || "[]"));
   }, []);
 
-  const summary = useMemo(() => {
+  const pricing = useMemo(() => {
     if (!step1) return null;
-    const principal = attendees.find((a) => a.isPrimary) || attendees[0];
-    return { principal };
+    try {
+      return computeTotalARS(step1, attendees);
+    } catch {
+      return null;
+    }
   }, [step1, attendees]);
 
   async function pagar() {
-  setLoading(true);
-  try {
-    const body = { step1, attendees };
-    const r = await fetch("/api/public/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    if (!step1) return;
+    setLoading(true);
 
-    const j = await r.json().catch(() => ({}));
+    try {
+      const existingRegId = localStorage.getItem("regId") || "";
 
-    if (!r.ok) {
-      alert(j.error || "Error al iniciar el pago. Revisá logs en Vercel.");
+      const r = await fetch("/api/public/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step1, attendees, regId: existingRegId })
+      });
+
+      const j = await r.json().catch(() => ({}));
+
+      if (!r.ok) {
+        alert(j.error || "Error al iniciar el pago. Revisá los logs en Vercel.");
+        setLoading(false);
+        return;
+      }
+
+      // Guardar regId para reintentos (evita duplicados)
+      if (j.regId) localStorage.setItem("regId", j.regId);
+
+      // Si ya estaba pagado (caso raro), avisamos
+      if (j.alreadyPaid) {
+        alert("Esta inscripción ya figura como pagada.");
+        setLoading(false);
+        return;
+      }
+
+      if (!j.init_point) {
+        alert("No se recibió link de pago (init_point).");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect a MP
+      window.location.href = j.init_point;
+    } catch {
+      alert("Error de red/servidor al iniciar el pago.");
       setLoading(false);
-      return;
     }
-
-    if (!j.init_point) {
-      alert("No se recibió init_point de Mercado Pago.");
-      setLoading(false);
-      return;
-    }
-
-    window.location.href = j.init_point;
-  } catch (err: any) {
-    alert("Error de red / servidor al iniciar el pago.");
-    setLoading(false);
   }
-}
-
 
   if (!step1) {
     return (
       <Layout title="Confirmar inscripción">
         <div className="card">
-          <div className="alert">No se encontraron datos del Paso 1. Volvé a iniciar la inscripción.</div>
-          <a className="btn" href="/inscripcion/paso-1">Ir a Paso 1</a>
+          <div className="alert">
+            No se encontraron datos del Paso 1. Volvé a iniciar la inscripción.
+          </div>
+          <Link className="btn" href="/inscripcion/paso-1">Ir a Paso 1</Link>
         </div>
       </Layout>
     );
@@ -70,9 +86,18 @@ export default function Paso3() {
       <div className="card">
         <h2>Confirmar inscripción</h2>
 
-        <p><b>Principal:</b> {step1.primaryName} ({step1.phone}) {step1.email ? `- ${step1.email}` : ""}</p>
+        <p>
+          <b>Principal:</b> {step1.primaryFirstName} {step1.primaryLastName} ({step1.phone}) - {step1.email}
+        </p>
         <p><b>Cantidad:</b> {step1.count}</p>
-        <p><b>Días:</b> {step1.optionDays} {step1.daysDetail ? `(${step1.daysDetail})` : ""}</p>
+        <p>
+          <b>Días:</b>{" "}
+          {step1.optionDays === "full"
+            ? "Todo el campa"
+            : step1.optionDays === "1"
+            ? `1 día (${step1.daysDetail})`
+            : `2 días (${step1.daysDetail})`}
+        </p>
 
         <h3>Integrantes</h3>
         <table>
@@ -101,7 +126,9 @@ export default function Paso3() {
             ))}
           </tbody>
         </table>
-            {pricing && (
+
+        {/* BONUS: resumen de pago */}
+        {pricing && (
           <div className="card" style={{ marginTop: 12 }}>
             <h3>Resumen de pago</h3>
             <p><b>Personas que pagan (&gt;= 4 años):</b> {pricing.payingPeople}</p>
@@ -113,15 +140,15 @@ export default function Paso3() {
           </div>
         )}
 
-        <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button className="btn" onClick={pagar} disabled={loading}>
             {loading ? "Procesando..." : "Confirmar y pagar"}
-          </button>{" "}
-          <a className="btn secondary" href="/inscripcion/paso-2">Volver</a>
+          </button>
+          <Link className="btn secondary" href="/inscripcion/paso-2">Volver</Link>
         </div>
 
         <small style={{ display: "block", marginTop: 10 }}>
-          * El cobro real por Mercado Pago lo activamos en el bloque final.
+          * Mercado Pago puede pedirte email o iniciar sesión antes de mostrar los medios de pago.
         </small>
       </div>
     </Layout>

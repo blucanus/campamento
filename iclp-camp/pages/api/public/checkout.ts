@@ -11,12 +11,11 @@ import { computeTotalARS } from "@/lib/pricing";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { step1, attendees } = req.body || {};
+  const { step1, attendees, regId } = req.body || {};
   if (!step1 || !Array.isArray(attendees) || attendees.length < 1) {
     return res.status(400).json({ error: "Invalid payload" });
   }
 
-  // Email obligatorio
   const email = String(step1.email || "").trim();
   if (!email) return res.status(400).json({ error: "Email obligatorio" });
 
@@ -24,11 +23,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const fullName = `${step1.primaryFirstName || ""} ${step1.primaryLastName || ""}`.trim();
 
-  // Crear registro en estado pending
-  const doc = await Registration.create({
-    primary: { name: fullName, phone: step1.phone, email },
-    attendance: { optionDays: step1.optionDays, daysDetail: step1.daysDetail || "" },
-    attendees: attendees.map((a: any) => ({
+  // 1) Reusar registro si viene regId
+  let doc: any = null;
+  if (regId) {
+    doc = await Registration.findById(regId).catch(() => null);
+  }
+
+  // 2) Si no existe, crearlo
+  if (!doc) {
+    doc = await Registration.create({
+      primary: { name: fullName, phone: step1.phone, email },
+      attendance: { optionDays: step1.optionDays, daysDetail: step1.daysDetail || "" },
+      attendees: attendees.map((a: any) => ({
+        firstName: a.firstName,
+        lastName: a.lastName,
+        dni: a.dni,
+        age: Number(a.age || 0),
+        relation: a.isPrimary ? "Principal" : a.relation,
+        diet: a.diet || "ninguna",
+        sex: a.sex || "M",
+        isPrimary: !!a.isPrimary,
+        qrToken: nanoid(16),
+        lodging: { type: "none", room: "", bed: "none" }
+      })),
+      payment: { status: "pending", preferenceId: "", paymentId: "", lastEventAt: null }
+    });
+
+    // Mail pendiente solo al crear por primera vez
+    try {
+      const m = mailPending({ fullName, attendeesCount: doc.attendees.length });
+      await sendConfirmationEmail(email, m.subject, m.html);
+    } catch {}
+  } else {
+    // Si existe, actualizamos por si cambió algo (sin crear duplicado)
+    doc.primary = { name: fullName, phone: step1.phone, email };
+    doc.attendance = { optionDays: step1.optionDays, daysDetail: step1.daysDetail || "" };
+
+    // IMPORTANTE: si ya tenía qrToken por persona, lo ideal es conservarlo.
+    // Para simplificar, regeneramos si faltara.
+    doc.attendees = attendees.map((a: any) => ({
       firstName: a.firstName,
       lastName: a.lastName,
       dni: a.dni,
@@ -37,39 +70,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       diet: a.diet || "ninguna",
       sex: a.sex || "M",
       isPrimary: !!a.isPrimary,
-      qrToken: nanoid(16),
-      lodging: { type: "none", room: "", bed: "none" }
-    })),
-    payment: {
-      status: "pending",
-      preferenceId: "",
-      paymentId: "",
-      lastEventAt: null
-    }
-  });
-
-  // Email: datos cargados (pago pendiente)
-  try {
-    const m = mailPending({ fullName, attendeesCount: doc.attendees.length });
-    await sendConfirmationEmail(email, m.subject, m.html);
-  } catch {
-    // no frenamos checkout si falla email
+      qrToken: a.qrToken || nanoid(16),
+      lodging: a.lodging || { type: "none", room: "", bed: "none" }
+    }));
+    await doc.save();
   }
 
-  // Si no hay token de MP, fallback (no debería pasar en prod)
+  // Si ya está aprobado, no seguimos
+  if (doc.payment?.status === "approved") {
+    return res.json({ regId: String(doc._id), alreadyPaid: true });
+  }
+
   if (!env.MP_ACCESS_TOKEN) {
-    return res.json({ init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
+    return res.json({ regId: String(doc._id), init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
   }
 
   // Calcular total real
   const { payingPeople, pricePerPerson, total } = computeTotalARS(step1, doc.attendees);
 
-  // Caso: todos menores de 4 => sin cobro (queda pendiente/manual)
+  // Si total 0 (todos menores), no cobramos
   if (total <= 0) {
-    return res.json({ init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
+    return res.json({ regId: String(doc._id), init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
   }
 
-  // Crear preferencia de Mercado Pago
+  // Crear preferencia
   const pref = await createPreference({
     title: `Campamento ICLP (${doc.attendees.length} inscriptos)`,
     quantity: payingPeople,
@@ -87,6 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   doc.payment.preferenceId = pref.id;
   await doc.save();
 
-  // En test, si existe sandbox_init_point lo usamos
-  res.json({ init_point: (pref as any).sandbox_init_point || pref.init_point });
+  return res.json({
+    regId: String(doc._id),
+    init_point: (pref as any).sandbox_init_point || pref.init_point
+  });
 }
