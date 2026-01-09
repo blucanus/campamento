@@ -35,6 +35,7 @@
     "build": "next build",
     "start": "next start",
     "seed": "node scripts/seed-admin.mjs",
+    "seed:base": "node scripts/seed-base-products.mjs",
     "lint": "eslint"
   }
 }

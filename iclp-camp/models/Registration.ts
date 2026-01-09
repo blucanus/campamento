@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model, models } from "mongoose";
 
 const AttendeeSchema = new Schema({
   firstName: String,
@@ -22,6 +22,21 @@ const RegistrationSchema = new Schema({
   primary: { name: String, phone: String, email: String },
   attendance: { optionDays: String, daysDetail: String },
   attendees: [AttendeeSchema],
+  extras: [
+    {
+      variantId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductVariant" },
+      sku: String,
+      name: String, // "Remera Campa" / "Gorra Campa"
+      attributes: {
+        design: String,
+        color: String,
+        size: String
+      },
+      qty: Number,
+      unitPrice: Number
+    }
+  ],
+
   payment: {
     status: { type: String, default: "pending" }
   }

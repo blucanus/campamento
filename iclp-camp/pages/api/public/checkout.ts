@@ -1,123 +1,141 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
-import { Registration } from "@/models/Registration";
-import { nanoid } from "nanoid";
-import { sendConfirmationEmail } from "@/lib/notify";
-import { mailPending } from "@/lib/templates";
 import { env } from "@/lib/env";
-import { createPreference } from "@/lib/mercadopago";
 import { computeTotalARS } from "@/lib/pricing";
+import { createPreference } from "@/lib/mercadopago";
+import { Product } from "@/models/Product";
+import { ProductVariant } from "@/models/ProductVariant";
+import { Registration } from "@/models/Registration";
+
+type CartItem = { variantId: string; qty: number };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { step1, attendees, regId } = req.body || {};
-  if (!step1 || !Array.isArray(attendees) || attendees.length < 1) {
-    return res.status(400).json({ error: "Invalid payload" });
-  }
+  const { step1, attendees, regId, cart } = req.body || {};
+  if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
   const email = String(step1.email || "").trim();
-  if (!email) return res.status(400).json({ error: "Email obligatorio" });
+  if (!email) return res.status(400).json({ error: "Email requerido" });
 
   await connectDB();
 
-  const fullName = `${step1.primaryFirstName || ""} ${step1.primaryLastName || ""}`.trim();
-
-  // 1) Reusar registro si viene regId
+  // Buscar o crear inscripción
   let doc: any = null;
+
   if (regId) {
-    doc = await Registration.findById(regId).catch(() => null);
+    doc = await Registration.findById(regId);
   }
 
-  // 2) Si no existe, crearlo
   if (!doc) {
     doc = await Registration.create({
-      primary: { name: fullName, phone: step1.phone, email },
-      attendance: { optionDays: step1.optionDays, daysDetail: step1.daysDetail || "" },
-      attendees: attendees.map((a: any) => ({
-        firstName: a.firstName,
-        lastName: a.lastName,
-        dni: a.dni,
-        age: Number(a.age || 0),
-        relation: a.isPrimary ? "Principal" : a.relation,
-        diet: a.diet || "ninguna",
-        sex: a.sex || "M",
-        isPrimary: !!a.isPrimary,
-        qrToken: nanoid(16),
-        lodging: { type: "none", room: "", bed: "none" }
-      })),
-      payment: { status: "pending", preferenceId: "", paymentId: "", lastEventAt: null }
+      step1,
+      attendees,
+      extras: [],
+      payment: { status: "pending" }
+    });
+  } else {
+    // actualizar datos si volvieron a intentar
+    doc.step1 = step1;
+    doc.attendees = attendees;
+  }
+
+  if (doc.payment?.status === "approved") {
+    await doc.save();
+    return res.status(200).json({ regId: String(doc._id), alreadyPaid: true });
+  }
+
+  // Si ya tiene init_point guardado, lo reusamos
+  if (doc.payment?.initPoint) {
+    await doc.save();
+    return res.status(200).json({ regId: String(doc._id), init_point: doc.payment.initPoint });
+  }
+
+  // pricing base
+  const base = computeTotalARS(step1, attendees);
+  const payingPeople = Number(base.payingPeople || 0);
+  const pricePerPerson = Number(base.pricePerPerson || 0);
+
+  // extras
+  const cartItems: CartItem[] = Array.isArray(cart) ? cart : [];
+
+  const products = await Product.find({}).lean();
+  const prodById = new Map(products.map((p: any) => [String(p._id), p]));
+
+  const extras: any[] = [];
+  const mpExtras: { title: string; quantity: number; unit_price: number; currency_id: "ARS" }[] = [];
+
+  for (const item of cartItems) {
+    const qty = Math.max(0, Number(item?.qty || 0));
+    if (!item?.variantId || qty <= 0) continue;
+
+    const v: any = await ProductVariant.findById(item.variantId);
+    if (!v || !v.isActive) return res.status(400).json({ error: "Variante no disponible" });
+
+    const stock = Number(v.stock || 0);
+    if (qty > stock) return res.status(400).json({ error: `Stock insuficiente (${v.sku})` });
+
+    const p = prodById.get(String(v.productId));
+    const name = p?.name || "Producto";
+
+    const unitPrice = Number(v.priceBundle || 0);
+
+    extras.push({
+      variantId: String(v._id),
+      sku: v.sku,
+      name,
+      attributes: v.attributes,
+      qty,
+      unitPrice
     });
 
-    // Mail pendiente solo al crear por primera vez
-    try {
-      const m = mailPending({ fullName, attendeesCount: doc.attendees.length });
-      await sendConfirmationEmail(email, m.subject, m.html);
-    } catch {}
-  } else {
-    // Si existe, actualizamos por si cambió algo (sin crear duplicado)
-    doc.primary = { name: fullName, phone: step1.phone, email };
-    doc.attendance = { optionDays: step1.optionDays, daysDetail: step1.daysDetail || "" };
+    const label =
+      name +
+      ` (${v.attributes?.design || ""} ${v.attributes?.color || ""}` +
+      (v.attributes?.size ? ` ${v.attributes.size}` : "") +
+      ")";
 
-    // IMPORTANTE: si ya tenía qrToken por persona, lo ideal es conservarlo.
-    // Para simplificar, regeneramos si faltara.
-    doc.attendees = attendees.map((a: any) => ({
-      firstName: a.firstName,
-      lastName: a.lastName,
-      dni: a.dni,
-      age: Number(a.age || 0),
-      relation: a.isPrimary ? "Principal" : a.relation,
-      diet: a.diet || "ninguna",
-      sex: a.sex || "M",
-      isPrimary: !!a.isPrimary,
-      qrToken: a.qrToken || nanoid(16),
-      lodging: a.lodging || { type: "none", room: "", bed: "none" }
-    }));
-    await doc.save();
+    mpExtras.push({
+      title: label.trim(),
+      quantity: qty,
+      unit_price: unitPrice,
+      currency_id: "ARS"
+    });
   }
 
-  // Si ya está aprobado, no seguimos
-  if (doc.payment?.status === "approved") {
-    return res.json({ regId: String(doc._id), alreadyPaid: true });
-  }
+  doc.extras = extras;
 
-  if (!env.MP_ACCESS_TOKEN) {
-    return res.json({ regId: String(doc._id), init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
-  }
+  const items = [
+    {
+      title: "Inscripción Campamento ICLP",
+      quantity: payingPeople,
+      unit_price: pricePerPerson,
+      currency_id: "ARS" as const
+    },
+    ...mpExtras
+  ];
 
-  // Calcular total real
-
-  console.log("ENV CAMP_PRICE_FULL:", process.env.CAMP_PRICE_FULL);
-console.log("env.CAMP_PRICE_FULL:", env.CAMP_PRICE_FULL);
-  const { payingPeople, pricePerPerson, total } = computeTotalARS(step1, doc.attendees);
-
-  // Si total 0 (todos menores), no cobramos
-  if (total <= 0) {
-    return res.json({ regId: String(doc._id), init_point: `${env.APP_URL}/mp/pending?reg=${doc._id}` });
-  }
-
-  // Crear preferencia
   const pref = await createPreference({
-    title: `Campamento ICLP (${doc.attendees.length} inscriptos)`,
-    quantity: payingPeople,
-    unit_price: pricePerPerson,
+    items,
     external_reference: String(doc._id),
     payer_email: email,
     notification_url: env.MP_NOTIFICATION_URL,
     back_urls: {
-      success: `${env.APP_URL}/mp/success?reg=${doc._id}`,
-      pending: `${env.APP_URL}/mp/pending?reg=${doc._id}`,
-      failure: `${env.APP_URL}/mp/failure?reg=${doc._id}`
+      success: `${env.APP_URL}/mp/success`,
+      pending: `${env.APP_URL}/mp/pending`,
+      failure: `${env.APP_URL}/mp/failure`
     }
   });
 
+  const initPoint =
+    env.MP_ACCESS_TOKEN.startsWith("TEST-")
+      ? ((pref as any).sandbox_init_point || pref.init_point)
+      : pref.init_point;
+
   doc.payment.preferenceId = pref.id;
+  doc.payment.initPoint = initPoint;
+  doc.payment.status = "pending";
   await doc.save();
 
- const initPoint =
-  env.MP_ACCESS_TOKEN.startsWith("TEST-")
-    ? ((pref as any).sandbox_init_point || pref.init_point)
-    : pref.init_point;
-
-return res.json({ regId: String(doc._id), init_point: initPoint });
+  return res.status(200).json({ regId: String(doc._id), init_point: initPoint });
 }

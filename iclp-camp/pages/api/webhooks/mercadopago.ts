@@ -4,6 +4,7 @@ import { Registration } from "@/models/Registration";
 import { env } from "@/lib/env";
 import { sendConfirmationEmail } from "@/lib/notify";
 import { mailApproved } from "@/lib/templates";
+import { ProductVariant } from "@/models/ProductVariant";
 
 async function fetchPayment(paymentId: string) {
   const r = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -32,28 +33,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const regId = String(payment.external_reference || "");
     if (!regId) return res.status(200).json({ ok: true });
 
-    const reg = await Registration.findById(regId);
+    const reg: any = await Registration.findById(regId);
     if (!reg) return res.status(200).json({ ok: true });
 
     const newStatus = String(payment.status || "pending"); // approved / pending / rejected / in_process
     const prevStatus = reg.payment?.status;
 
+    // Actualizar estado de pago
+    reg.payment = reg.payment || {};
     reg.payment.status = newStatus;
     reg.payment.paymentId = String(payment.id || "");
     reg.payment.lastEventAt = new Date();
     await reg.save();
 
-    // Si pasa a approved y antes no lo era -> enviar mail confirmado
+    // ✅ Si pasa a approved y antes no lo era -> descontar stock + enviar mail confirmado
     if (newStatus === "approved" && prevStatus !== "approved") {
-      const fullName = reg.primary?.name || "";
-      const email = reg.primary?.email || "";
+      // 1) Descontar stock (si hay extras)
+      const extras = Array.isArray(reg.extras) ? reg.extras : [];
+
+      for (const x of extras) {
+        const variantId = x?.variantId;
+        const qty = Number(x?.qty || 0);
+        if (!variantId || qty <= 0) continue;
+
+        // Descontar stock solo si alcanza (evita negativos)
+        try {
+          await ProductVariant.updateOne(
+            { _id: variantId, stock: { $gte: qty } },
+            { $inc: { stock: -qty } }
+          );
+        } catch {
+          // si falla, no frenamos el webhook (MP requiere 200)
+        }
+      }
+
+      // 2) Mail aprobado (tolerante: primary o step1)
+      const fullName =
+        reg.primary?.name ||
+        `${reg.step1?.primaryFirstName || ""} ${reg.step1?.primaryLastName || ""}`.trim();
+
+      const email =
+        reg.primary?.email ||
+        reg.step1?.email ||
+        "";
+
       if (email) {
         const m = mailApproved({ fullName, attendeesCount: reg.attendees?.length || 0 });
-        try { await sendConfirmationEmail(email, m.subject, m.html); } catch {}
+        try {
+          await sendConfirmationEmail(email, m.subject, m.html);
+        } catch {
+          // noop
+        }
       }
     }
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, topic });
   } catch {
     // MP requiere 200 para no reintentar infinito
     return res.status(200).json({ ok: true });
