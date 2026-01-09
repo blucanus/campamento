@@ -86,6 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Calcular total real
+
+  console.log("ENV CAMP_PRICE_FULL:", process.env.CAMP_PRICE_FULL);
+console.log("env.CAMP_PRICE_FULL:", env.CAMP_PRICE_FULL);
   const { payingPeople, pricePerPerson, total } = computeTotalARS(step1, doc.attendees);
 
   // Si total 0 (todos menores), no cobramos
