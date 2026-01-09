@@ -111,8 +111,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   doc.payment.preferenceId = pref.id;
   await doc.save();
 
-  return res.json({
-    regId: String(doc._id),
-    init_point: (pref as any).sandbox_init_point || pref.init_point
-  });
+ const initPoint =
+  env.MP_ACCESS_TOKEN.startsWith("TEST-")
+    ? ((pref as any).sandbox_init_point || pref.init_point)
+    : pref.init_point;
+
+return res.json({ regId: String(doc._id), init_point: initPoint });
 }
