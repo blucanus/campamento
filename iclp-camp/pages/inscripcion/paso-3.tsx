@@ -1,9 +1,14 @@
+import { computeTotalARS } from "@/lib/pricing";
+
 import Layout from "@/components/Layout";
+
 import { useEffect, useMemo, useState } from "react";
 
 export default function Paso3() {
   const [step1, setStep1] = useState<any>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
+  const pricing = step1 ? computeTotalARS(step1, attendees) : null;
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -96,6 +101,17 @@ export default function Paso3() {
             ))}
           </tbody>
         </table>
+            {pricing && (
+          <div className="card" style={{ marginTop: 12 }}>
+            <h3>Resumen de pago</h3>
+            <p><b>Personas que pagan (&gt;= 4 años):</b> {pricing.payingPeople}</p>
+            <p><b>Precio por persona:</b> ${pricing.pricePerPerson.toLocaleString("es-AR")}</p>
+            <p><b>Total:</b> <span style={{ fontSize: 18 }}>${pricing.total.toLocaleString("es-AR")}</span></p>
+            <small>
+              * Menores de 4 años no abonan. 1 día = 50% del total. 2 días o campa completo = total.
+            </small>
+          </div>
+        )}
 
         <div style={{ marginTop: 14 }}>
           <button className="btn" onClick={pagar} disabled={loading}>

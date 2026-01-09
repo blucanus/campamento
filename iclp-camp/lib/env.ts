@@ -9,5 +9,8 @@ export const env = {
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || "",
   MP_NOTIFICATION_URL: process.env.MP_NOTIFICATION_URL || "",
   APP_URL: process.env.APP_URL || "http://localhost:3000",
+  CAMP_PRICE_FULL: Number(process.env.CAMP_PRICE_FULL || 63000),
+CAMP_PRICE_ONE_DAY_FACTOR: Number(process.env.CAMP_PRICE_ONE_DAY_FACTOR || 0.5),
+
 
 };

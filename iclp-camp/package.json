@@ -9,6 +9,7 @@
     "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
+    "mercadopago": "^2.11.0",
     "mongoose": "^9.0.2",
     "nanoid": "^5.1.6",
     "next": "16.1.1",
