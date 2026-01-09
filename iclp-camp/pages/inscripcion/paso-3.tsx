@@ -1,32 +1,43 @@
 import Layout from "@/components/Layout";
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { computeTotalARS } from "@/lib/pricing";
+import { useEffect, useState } from "react";
 
 export default function Paso3() {
   const [step1, setStep1] = useState<any>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
+  const [pricing, setPricing] = useState<any>(null);
+
   const [loading, setLoading] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string>(""); // por si en el futuro querés QR, hoy no se usa
 
   useEffect(() => {
-    setStep1(JSON.parse(localStorage.getItem("step1") || "null"));
-    setAttendees(JSON.parse(localStorage.getItem("step2") || "[]"));
+    const s1 = JSON.parse(localStorage.getItem("step1") || "null");
+    const s2 = JSON.parse(localStorage.getItem("step2") || "[]");
+    setStep1(s1);
+    setAttendees(s2);
   }, []);
 
-  const pricing = useMemo(() => {
-    if (!step1) return null;
-    try {
-      return computeTotalARS(step1, attendees);
-    } catch {
-      return null;
-    }
+  // Calcular resumen desde el servidor (siempre consistente con env vars reales)
+  useEffect(() => {
+    if (!step1) return;
+
+    fetch("/api/public/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ step1, attendees })
+    })
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "No se pudo calcular el total");
+        return j;
+      })
+      .then(setPricing)
+      .catch(() => setPricing(null));
   }, [step1, attendees]);
 
   async function pagar() {
     if (!step1) return;
-    setLoading(true);
 
+    setLoading(true);
     try {
       const existingRegId = localStorage.getItem("regId") || "";
 
@@ -39,15 +50,13 @@ export default function Paso3() {
       const j = await r.json().catch(() => ({}));
 
       if (!r.ok) {
-        alert(j.error || "Error al iniciar el pago. Revisá los logs en Vercel.");
+        alert(j.error || "Error al iniciar el pago. Revisá logs en Vercel.");
         setLoading(false);
         return;
       }
 
-      // Guardar regId para reintentos (evita duplicados)
       if (j.regId) localStorage.setItem("regId", j.regId);
 
-      // Si ya estaba pagado (caso raro), avisamos
       if (j.alreadyPaid) {
         alert("Esta inscripción ya figura como pagada.");
         setLoading(false);
@@ -60,7 +69,6 @@ export default function Paso3() {
         return;
       }
 
-      // Redirect a MP
       window.location.href = j.init_point;
     } catch {
       alert("Error de red/servidor al iniciar el pago.");
@@ -75,7 +83,9 @@ export default function Paso3() {
           <div className="alert">
             No se encontraron datos del Paso 1. Volvé a iniciar la inscripción.
           </div>
-          <Link className="btn" href="/inscripcion/paso-1">Ir a Paso 1</Link>
+          <Link className="btn" href="/inscripcion/paso-1">
+            Ir a Paso 1
+          </Link>
         </div>
       </Layout>
     );
@@ -87,9 +97,12 @@ export default function Paso3() {
         <h2>Confirmar inscripción</h2>
 
         <p>
-          <b>Principal:</b> {step1.primaryFirstName} {step1.primaryLastName} ({step1.phone}) - {step1.email}
+          <b>Principal:</b> {step1.primaryFirstName} {step1.primaryLastName} ({step1.phone}) –{" "}
+          {step1.email}
         </p>
-        <p><b>Cantidad:</b> {step1.count}</p>
+        <p>
+          <b>Cantidad:</b> {step1.count}
+        </p>
         <p>
           <b>Días:</b>{" "}
           {step1.optionDays === "full"
@@ -115,7 +128,9 @@ export default function Paso3() {
           <tbody>
             {attendees.map((a, idx) => (
               <tr key={idx}>
-                <td>{a.firstName} {a.lastName}</td>
+                <td>
+                  {a.firstName} {a.lastName}
+                </td>
                 <td>{a.dni}</td>
                 <td>{a.age}</td>
                 <td>{a.isPrimary ? "Principal" : a.relation}</td>
@@ -127,24 +142,41 @@ export default function Paso3() {
           </tbody>
         </table>
 
-        {/* BONUS: resumen de pago */}
-        {pricing && (
-          <div className="card" style={{ marginTop: 12 }}>
-            <h3>Resumen de pago</h3>
-            <p><b>Personas que pagan (&gt;= 4 años):</b> {pricing.payingPeople}</p>
-            <p><b>Precio por persona:</b> ${pricing.pricePerPerson.toLocaleString("es-AR")}</p>
-            <p><b>Total:</b> <span style={{ fontSize: 18 }}>${pricing.total.toLocaleString("es-AR")}</span></p>
-            <small>
-              * Menores de 4 años no abonan. 1 día = 50% del total. 2 días o campa completo = total.
-            </small>
-          </div>
-        )}
+        {/* Resumen de pago desde el server */}
+        <div className="card" style={{ marginTop: 12 }}>
+          <h3>Resumen de pago</h3>
+
+          {!pricing ? (
+            <p style={{ opacity: 0.8 }}>Calculando total...</p>
+          ) : (
+            <>
+              <p>
+                <b>Personas que pagan (≥ 4 años):</b> {pricing.payingPeople}
+              </p>
+              <p>
+                <b>Precio por persona:</b> ${Number(pricing.pricePerPerson).toLocaleString("es-AR")}
+              </p>
+              <p>
+                <b>Total:</b>{" "}
+                <span style={{ fontSize: 18 }}>
+                  ${Number(pricing.total).toLocaleString("es-AR")}
+                </span>
+              </p>
+              <small>
+                * Menores de 4 años no abonan. 1 día = 50% del total. 2 días o campa completo = total.
+              </small>
+            </>
+          )}
+        </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button className="btn" onClick={pagar} disabled={loading}>
             {loading ? "Procesando..." : "Confirmar y pagar"}
           </button>
-          <Link className="btn secondary" href="/inscripcion/paso-2">Volver</Link>
+
+          <Link className="btn secondary" href="/inscripcion/paso-2">
+            Volver
+          </Link>
         </div>
 
         <small style={{ display: "block", marginTop: 10 }}>
