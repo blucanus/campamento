@@ -14,10 +14,18 @@ export default function Layout({ title, children }: { title?: string; children: 
       </Head>
 
       <header className="header">
-        <div className="container nav" style={{ justifyContent: "space-between" }}>
-          <strong>🏕️ Campamento ICLP</strong>
+        <div className="container nav" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <strong style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span>🏕️</span> Campamento ICLP
+            </strong>
 
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            {isAdmin ? (
+              <BadgeNav text="ADMIN" />
+            ) : null}
+          </div>
+
+          <nav style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
             <Link href="/">Inicio</Link>
             <Link href="/inscripcion/paso-1">Inscribirme</Link>
             <Link href="/mi-habitacion">Mi habitación</Link>
@@ -25,15 +33,15 @@ export default function Layout({ title, children }: { title?: string; children: 
 
             {isAdmin && (
               <>
-                <span style={{ opacity: 0.4 }}>|</span>
-                <Link href="/admin">Admin</Link>
+                <span style={{ opacity: 0.35 }}>|</span>
+                <Link href="/admin">Inscripciones</Link>
                 <Link href="/admin/reportes">Reportes</Link>
                 <Link href="/inscripcion/paso-1?admin=1">
                   <b>➕ Inscribir</b>
                 </Link>
               </>
             )}
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -45,5 +53,23 @@ export default function Layout({ title, children }: { title?: string; children: 
         <small>© {new Date().getFullYear()} Campamento ICLP</small>
       </footer>
     </>
+  );
+}
+
+function BadgeNav({ text }: { text: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 900,
+        letterSpacing: 1,
+        padding: "4px 10px",
+        borderRadius: 999,
+        background: "rgba(59,130,246,0.18)",
+        border: "1px solid rgba(255,255,255,0.14)"
+      }}
+    >
+      {text}
+    </span>
   );
 }

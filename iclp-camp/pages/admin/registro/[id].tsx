@@ -1,15 +1,24 @@
 import Layout from "@/components/Layout";
+import Badge from "@/components/Badge";
+import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 export default function Registro() {
-  const { query } = useRouter();
+  const { query, back } = useRouter();
   const id = String(query.id || "");
   const [reg, setReg] = useState<any>(null);
+  const [savingDelivery, setSavingDelivery] = useState(false);
+
+  async function load() {
+    const r = await fetch("/api/admin/registration?id=" + id);
+    const j = await r.json();
+    setReg(j);
+  }
 
   useEffect(() => {
     if (!id) return;
-    fetch("/api/admin/registration?id=" + id).then(r => r.json()).then(setReg);
+    load();
   }, [id]);
 
   async function save(attId: string, lodging: any) {
@@ -18,8 +27,7 @@ export default function Registro() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ registrationId: id, attendeeId: attId, lodging })
     });
-    const fresh = await fetch("/api/admin/registration?id=" + id).then(r => r.json());
-    setReg(fresh);
+    await load();
   }
 
   const primaryName = useMemo(() => {
@@ -33,7 +41,7 @@ export default function Registro() {
 
   const phone = useMemo(() => {
     if (!reg) return "-";
-    return reg.primary?.phone || reg.step1?.phone || "-";
+    return reg.primary?.phone || reg.step1?.phone || reg.step1?.tel || "-";
   }, [reg]);
 
   const email = useMemo(() => {
@@ -41,49 +49,79 @@ export default function Registro() {
     return reg.primary?.email || reg.step1?.email || "-";
   }, [reg]);
 
+  async function toggleDelivered() {
+    if (!reg) return;
+    setSavingDelivery(true);
+
+    try {
+      const r = await fetch("/api/admin/toggle-extras-delivered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: reg._id, delivered: !reg.extrasDelivered })
+      });
+      await r.json();
+      await load();
+
+      // feedback visible inmediato
+      alert(!reg.extrasDelivered ? "✅ Marcado como ENTREGADO" : "↩️ Marcado como NO entregado");
+    } finally {
+      setSavingDelivery(false);
+    }
+  }
+
   if (!reg) return <Layout title="Registro"><div className="card">Cargando...</div></Layout>;
+
+  const hasExtras = Array.isArray(reg.extras) && reg.extras.length > 0;
 
   return (
     <Layout title="Detalle inscripción">
       <div className="card">
-        <h2>{primaryName}</h2>
-        <p><b>Tel:</b> {phone} | <b>Email:</b> {email}</p>
-        <p><b>Pago:</b> {reg.payment?.status}</p>
-        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <span>
-            <b>Entrega productos:</b>{" "}
-            {reg.extrasDelivered ? "✅ Entregadas" : "⏳ Pendiente"}
-            {reg.extrasDeliveredAt ? ` (${new Date(reg.extrasDeliveredAt).toLocaleString("es-AR")})` : ""}
-          </span>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ marginBottom: 6 }}>{primaryName}</h2>
+            <p style={{ marginTop: 0 }}><b>Tel:</b> {phone} | <b>Email:</b> {email}</p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <span><b>Pago:</b></span>
+              <Badge tone={paymentStatusTone(reg.payment?.status)}>
+                {paymentStatusLabel(reg.payment?.status)}
+              </Badge>
 
-          {Array.isArray(reg.extras) && reg.extras.length ? (
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={async () => {
-                await fetch("/api/admin/toggle-extras-delivered", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ registrationId: reg._id, delivered: !reg.extrasDelivered })
-                });
-                const fresh = await fetch("/api/admin/registration?id=" + reg._id).then(r => r.json());
-                setReg(fresh);
-              }}
-            >
-              {reg.extrasDelivered ? "Marcar como NO entregadas" : "Marcar como entregadas"}
+              {hasExtras ? (
+                reg.extrasDelivered ? <Badge tone="success">✅ Productos entregados</Badge> : <Badge tone="warning">⏳ Productos pendientes</Badge>
+              ) : (
+                <Badge tone="muted">Sin productos</Badge>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button className="btn secondary" type="button" onClick={() => back()}>
+              ← Volver
             </button>
-          ) : (
-            <span style={{ opacity: 0.7 }}>(No compró productos)</span>
-          )}
-        </div>
 
+            {hasExtras ? (
+              <button
+                className="btn"
+                type="button"
+                onClick={toggleDelivered}
+                disabled={savingDelivery}
+              >
+                {savingDelivery
+                  ? "Guardando..."
+                  : reg.extrasDelivered
+                    ? "Marcar como NO entregadas"
+                    : "Marcar como entregadas"}
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      {/* ✅ Productos */}
+      {/* Productos */}
       <div className="card" style={{ marginTop: 12 }}>
         <h3>Productos</h3>
 
-        {Array.isArray(reg.extras) && reg.extras.length ? (
+        {hasExtras ? (
           <table>
             <thead>
               <tr>
@@ -121,6 +159,7 @@ export default function Registro() {
         )}
       </div>
 
+      {/* Integrantes */}
       <div className="card" style={{ marginTop: 12 }}>
         <h3>Integrantes</h3>
         <table>
