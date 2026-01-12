@@ -93,16 +93,26 @@ export default function Registro() {
     setSavingDelivery(true);
 
     try {
-      await fetch("/api/admin/toggle-extras-delivered", {
+      const r = await fetch("/api/admin/toggle-extras-delivered", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registrationId: reg._id, delivered: next })
       });
+      const j = await r.json();
+
+      // fijar estado desde la respuesta del server
+      setReg((prev: any) => ({
+        ...prev,
+        extrasDelivered: j.extrasDelivered,
+        extrasDeliveredAt: j.extrasDeliveredAt,
+        extrasDeliveredBy: j.extrasDeliveredBy
+      }));
 
       toast.show(next ? "✅ Marcado como ENTREGADO" : "↩️ Marcado como NO entregado", "success");
 
-      // refresco silencioso (por deliveredAt/deliveredBy reales)
+      // refresco opcional (ya no debería cambiarlo)
       await load();
+
     } catch {
       // rollback si falla
       setReg((prev: any) => ({
