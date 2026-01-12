@@ -9,14 +9,37 @@ import { Registration } from "@/models/Registration";
 
 type CartItem = { variantId: string; qty: number };
 
+function normalizePrimary(step1: any) {
+  const first = String(step1?.primaryFirstName || step1?.firstName || "").trim();
+  const last = String(step1?.primaryLastName || step1?.lastName || "").trim();
+
+  const email = String(step1?.email || step1?.mail || "").trim();
+
+  const phone =
+    String(
+      step1?.phone ||
+      step1?.tel ||
+      step1?.telefono ||
+      step1?.phoneNumber ||
+      ""
+    ).trim();
+
+  return {
+    name: `${first} ${last}`.trim() || "-",
+    email: email || "",
+    phone: phone || ""
+  };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   const { step1, attendees, regId, cart } = req.body || {};
   if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
-  const email = String(step1.email || "").trim();
-  if (!email) return res.status(400).json({ error: "Email requerido" });
+  const primary = normalizePrimary(step1);
+
+  if (!primary.email) return res.status(400).json({ error: "Email requerido" });
 
   await connectDB();
 
@@ -30,6 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!doc) {
     doc = await Registration.create({
       step1,
+      primary, // ✅ CLAVE: guardar primary al crear
       attendees,
       extras: [],
       payment: { status: "pending" }
@@ -37,11 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else {
     // actualizar datos si volvieron a intentar
     doc.step1 = step1;
-    doc.primary = {
-      name: `${step1.primaryFirstName} ${step1.primaryLastName}`.trim(),
-      phone: step1.phone,
-      email: step1.email
-    };
+    doc.primary = primary; // ✅ normalizado
     doc.attendees = attendees;
   }
 
@@ -123,7 +143,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const pref = await createPreference({
     items,
     external_reference: String(doc._id),
-    payer_email: email,
+    payer_email: primary.email,
     notification_url: env.MP_NOTIFICATION_URL,
     back_urls: {
       success: `${env.APP_URL}/mp/success`,

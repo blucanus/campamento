@@ -11,7 +11,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id) return res.status(400).json({ error: "Missing id" });
 
   await connectDB();
-  const reg = await Registration.findById(id).lean();
+
+  const reg: any = await Registration.findById(id)
+    // ✅ Traer ambos formatos + extras
+    .select("primary step1 attendees extras payment createdAt")
+    .lean();
+
   if (!reg) return res.status(404).json({ error: "Not found" });
-  res.json(reg);
+
+  // ✅ Normalizar primary para que SIEMPRE haya nombre/tel/email “usables”
+  const primaryName =
+    reg.primary?.name ||
+    `${reg.step1?.primaryFirstName || ""} ${reg.step1?.primaryLastName || ""}`.trim() ||
+    "-";
+
+  // ojo: por si en tu step1 el campo se llama "tel" en vez de "phone"
+  const primaryPhone = reg.primary?.phone || reg.step1?.phone || reg.step1?.tel || "-";
+  const primaryEmail = reg.primary?.email || reg.step1?.email || "-";
+
+  return res.status(200).json({
+    ...reg,
+    primary: {
+      name: primaryName,
+      phone: primaryPhone,
+      email: primaryEmail
+    }
+  });
 }
