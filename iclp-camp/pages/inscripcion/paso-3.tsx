@@ -183,6 +183,8 @@ export default function Paso3() {
     );
   }
 
+  
+
   const principal = `${step1.primaryFirstName} ${step1.primaryLastName}`.trim();
 
   return (

@@ -2,17 +2,18 @@ import Layout from "@/components/Layout";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
-const REL_OPTIONS = ["Esposo/a","Hijo/a","Padre/Madre","Hermano/a","Abuelo/a","Tío/a","Primo/a","Amigo/a","Otro"];
+const REL_OPTIONS = ["Esposo/a", "Hijo/a", "Padre/Madre", "Hermano/a", "Abuelo/a", "Tío/a", "Primo/a", "Amigo/a", "Otro"];
 
 const emptyPerson = () => ({
   firstName: "",
   lastName: "",
   dni: "",
-  age: 0,
+  age: "",          // 👈 antes 0
   relation: "Hijo/a",
   sex: "M",
   isPrimary: false
 });
+
 
 export default function Paso2() {
   const router = useRouter();
@@ -109,9 +110,15 @@ export default function Paso2() {
     e.preventDefault();
     if (!hasPrimary) setPrimary(0);
 
-    localStorage.setItem("step2", JSON.stringify(attendees));
+    const normalized = attendees.map((a) => ({
+      ...a,
+      age: Number(a.age || 0) // 👈 convierte "" -> 0
+    }));
+
+    localStorage.setItem("step2", JSON.stringify(normalized));
     router.push("/inscripcion/paso-3");
   }
+
 
   if (!step1) return null;
 
@@ -176,15 +183,19 @@ export default function Paso2() {
                 <div>
                   <label>Edad</label>
                   <input
-                    type="number"
-                    min={0}
-                    value={a.age}
-                    required
+                    type="text"
                     inputMode="numeric"
-                    onChange={(e) => update(i, { age: Number(e.target.value) })}
+                    placeholder="Ej: 12"
+                    value={a.age ?? ""}
+                    onChange={(e) => {
+                      // solo números (o vacío)
+                      const v = e.target.value.replace(/[^\d]/g, "");
+                      update(i, { age: v });
+                    }}
                   />
                   <div className="fieldHint">Menores de 4 años no abonan.</div>
                 </div>
+
 
                 <div>
                   <label>Relación con el principal</label>
