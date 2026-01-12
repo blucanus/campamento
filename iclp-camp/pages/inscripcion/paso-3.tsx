@@ -23,7 +23,6 @@ export default function Paso3() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [loadingPay, setLoadingPay] = useState(false);
 
-  // selectors
   const [selType, setSelType] = useState<"tee" | "cap">("tee");
   const [selDesign, setSelDesign] = useState("");
   const [selColor, setSelColor] = useState("");
@@ -43,7 +42,6 @@ export default function Paso3() {
       .then(r => r.json())
       .then((data) => {
         setVariants(data || []);
-        // set defaults
         const first = (data || [])[0];
         if (first) {
           setSelType(first.productType);
@@ -61,12 +59,10 @@ export default function Paso3() {
       .map(([variantId, qty]) => ({ variantId, qty }));
   }, [cart]);
 
-  // persist cart
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  // quote server-side
   useEffect(() => {
     if (!step1) return;
     fetch("/api/public/quote", {
@@ -83,13 +79,9 @@ export default function Paso3() {
       .catch(() => setPricing(null));
   }, [step1, attendees, cartArr]);
 
-  const filtered = useMemo(() => {
-    return variants.filter(v => v.productType === selType);
-  }, [variants, selType]);
+  const filtered = useMemo(() => variants.filter(v => v.productType === selType), [variants, selType]);
 
-  const designs = useMemo(() => {
-    return Array.from(new Set(filtered.map(v => v.attributes.design))).sort();
-  }, [filtered]);
+  const designs = useMemo(() => Array.from(new Set(filtered.map(v => v.attributes.design))).sort(), [filtered]);
 
   const colors = useMemo(() => {
     return Array.from(
@@ -191,158 +183,215 @@ export default function Paso3() {
     );
   }
 
+  const principal = `${step1.primaryFirstName} ${step1.primaryLastName}`.trim();
+
   return (
     <Layout title="Confirmar inscripción">
-      <div className="card">
-        <h2>Confirmar inscripción</h2>
-
-        <p><b>Principal:</b> {step1.primaryFirstName} {step1.primaryLastName} – {step1.email}</p>
-
-        {/* EXTRAS */}
-        <div className="card" style={{ marginTop: 12 }}>
-          <h3>Sumar productos (precio preferencial)</h3>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label>
-              Producto
-              <select value={selType} onChange={(e) => {
-                const t = e.target.value as any;
-                setSelType(t);
-                setSelDesign("");
-                setSelColor("");
-              }}>
-                <option value="tee">Remeras</option>
-                <option value="cap">Gorras</option>
-              </select>
-            </label>
-
-            <label>
-              Diseño
-              <select value={selDesign} onChange={(e) => setSelDesign(e.target.value)}>
-                <option value="" disabled>Seleccionar</option>
-                {designs.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </label>
-
-            <label>
-              Color
-              <select value={selColor} onChange={(e) => setSelColor(e.target.value)}>
-                <option value="" disabled>Seleccionar</option>
-                {colors.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
-
-            {selType === "tee" ? (
-              <label>
-                Talle
-                <select value={selSize} onChange={(e) => setSelSize(e.target.value)}>
-                  {sizes.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-            ) : null}
+      <div className="wizard">
+        <div className="wizardHead">
+          <div>
+            <h2 className="wizardTitle">Confirmar y pagar</h2>
+            <p className="wizardSub">Paso 3 de 3 — Resumen final</p>
           </div>
 
-          <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-            {selectedVariant?.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={selectedVariant.photoUrl} alt="foto" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10 }} />
-            ) : (
-              <div style={{ width: 90, height: 90, borderRadius: 10, background: "rgba(255,255,255,0.06)" }} />
-            )}
+          <div className="stepper">
+            <div className="step isDone"><span className="stepDot" /> Paso 1</div>
+            <div className="step isDone"><span className="stepDot" /> Paso 2</div>
+            <div className="step isActive"><span className="stepDot" /> Resumen</div>
+          </div>
+        </div>
 
-            <div>
-              <div><b>{selectedVariant ? selectedVariant.sku : "Seleccioná una variante"}</b></div>
-              <div style={{ opacity: 0.8 }}>
-                Stock: {selectedVariant ? selectedVariant.stock : "-"} — Precio:{" "}
-                ${selectedVariant ? Number(selectedVariant.priceBundle).toLocaleString("es-AR") : "-"}
+        <div className="summaryBox">
+          {/* izquierda */}
+          <div>
+            <div className="card cardTight">
+              <h3 style={{ marginTop: 0 }}>Datos principales</h3>
+              <div className="summaryLine">
+                <span>Familiar principal</span>
+                <b>{principal}</b>
+              </div>
+              <div className="summaryLine">
+                <span>Email</span>
+                <b>{step1.email}</b>
+              </div>
+              <div className="summaryLine">
+                <span>Personas</span>
+                <b>{attendees.length}</b>
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button className="btn secondary" onClick={removeOne} disabled={!selectedVariant}>-</button>
-                <button className="btn" onClick={addOne} disabled={!selectedVariant}>Agregar</button>
+              <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
+                * Te llega un mail cuando cargás la inscripción y otro cuando se confirma el pago.
+              </div>
+            </div>
+
+            {/* EXTRAS */}
+            <div className="card cardTight" style={{ marginTop: 12 }}>
+              <h3 style={{ marginTop: 0 }}>Sumar productos (precio preferencial)</h3>
+
+              <div className="formGrid">
+                <div>
+                  <label>Producto</label>
+                  <select value={selType} onChange={(e) => {
+                    const t = e.target.value as any;
+                    setSelType(t);
+                    setSelDesign("");
+                    setSelColor("");
+                  }}>
+                    <option value="tee">Remeras</option>
+                    <option value="cap">Gorras</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Diseño</label>
+                  <select value={selDesign} onChange={(e) => setSelDesign(e.target.value)}>
+                    <option value="" disabled>Seleccionar</option>
+                    {designs.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label>Color</label>
+                  <select value={selColor} onChange={(e) => setSelColor(e.target.value)}>
+                    <option value="" disabled>Seleccionar</option>
+                    {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {selType === "tee" ? (
+                  <div>
+                    <label>Talle</label>
+                    <select value={selSize} onChange={(e) => setSelSize(e.target.value)}>
+                      {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+
+              <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+                {selectedVariant?.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selectedVariant.photoUrl} alt="foto" style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12 }} />
+                ) : (
+                  <div style={{ width: 92, height: 92, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(0,0,0,0.06)" }} />
+                )}
+
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div className="kpi">{selectedVariant ? selectedVariant.sku : "Seleccioná una variante"}</div>
+                  <div style={{ opacity: 0.8, marginTop: 4, fontSize: 13 }}>
+                    Stock: {selectedVariant ? selectedVariant.stock : "-"} — Precio:{" "}
+                    <b>${selectedVariant ? Number(selectedVariant.priceBundle).toLocaleString("es-AR") : "-"}</b>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button className="btn secondary" onClick={removeOne} disabled={!selectedVariant} type="button">-</button>
+                    <button className="btn" onClick={addOne} disabled={!selectedVariant} type="button">Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <h4 style={{ margin: 0 }}>Tu carrito</h4>
+
+                {pricing?.extrasLines?.length ? (
+                  <div className="tableWrap">
+                    <table className="miniTable" style={{ marginTop: 10 }}>
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Variante</th>
+                          <th>Precio</th>
+                          <th>Cant.</th>
+                          <th>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pricing.extrasLines.map((x: any) => {
+                          const label =
+                            `${x.attributes?.design || ""} - ${x.attributes?.color || ""}` +
+                            (x.attributes?.size ? ` - ${x.attributes.size}` : "");
+                          return (
+                            <tr key={x.variantId}>
+                              <td>{x.name}</td>
+                              <td>{label}</td>
+                              <td>${Number(x.unitPrice).toLocaleString("es-AR")}</td>
+                              <td>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={x.stock}
+                                  value={x.qty}
+                                  onChange={(e) => setQty(x.variantId, Number(e.target.value), x.stock)}
+                                  style={{ width: 90 }}
+                                />
+                              </td>
+                              <td>${Number(x.lineTotal).toLocaleString("es-AR")}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ opacity: 0.8, marginTop: 8 }}>No agregaste productos.</p>
+                )}
+
+                {pricing?.errors?.length ? (
+                  <div className="alert" style={{ marginTop: 10 }}>
+                    {pricing.errors.map((e: string, i: number) => <div key={i}>• {e}</div>)}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
 
-          {/* Carrito */}
-          <div style={{ marginTop: 12 }}>
-            <h4>Tu carrito</h4>
+          {/* derecha */}
+          <div>
+            <div className="card cardTight">
+              <h3 style={{ marginTop: 0 }}>Resumen de pago</h3>
 
-            {pricing?.extrasLines?.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Variante</th>
-                    <th>Precio</th>
-                    <th>Cant.</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pricing.extrasLines.map((x: any) => {
-                    const label =
-                      `${x.attributes?.design || ""} - ${x.attributes?.color || ""}` +
-                      (x.attributes?.size ? ` - ${x.attributes.size}` : "");
-                    return (
-                      <tr key={x.variantId}>
-                        <td>{x.name}</td>
-                        <td>{label}</td>
-                        <td>${Number(x.unitPrice).toLocaleString("es-AR")}</td>
-                        <td>
-                          <input
-                            type="number"
-                            min={0}
-                            max={x.stock}
-                            value={x.qty}
-                            onChange={(e) => setQty(x.variantId, Number(e.target.value), x.stock)}
-                            style={{ width: 90 }}
-                          />
-                        </td>
-                        <td>${Number(x.lineTotal).toLocaleString("es-AR")}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <p style={{ opacity: 0.8 }}>No agregaste productos.</p>
-            )}
+              {!pricing ? (
+                <p style={{ opacity: 0.8 }}>Calculando...</p>
+              ) : (
+                <>
+                  <div className="summaryLine">
+                    <span>Personas que pagan</span>
+                    <b>{pricing.payingPeople}</b>
+                  </div>
+                  <div className="summaryLine">
+                    <span>Precio por persona</span>
+                    <b>${Number(pricing.pricePerPerson).toLocaleString("es-AR")}</b>
+                  </div>
+                  <div className="summaryLine">
+                    <span>Extras</span>
+                    <b>${Number(pricing.extrasTotal).toLocaleString("es-AR")}</b>
+                  </div>
 
-            {pricing?.errors?.length ? (
-              <div className="alert" style={{ marginTop: 10 }}>
-                {pricing.errors.map((e: string, i: number) => <div key={i}>• {e}</div>)}
+                  <div className="summaryLine" style={{ paddingTop: 14 }}>
+                    <span className="kpi">Total</span>
+                    <span className="kpiBig">
+                      ${Number(pricing.totalFinal).toLocaleString("es-AR")}
+                    </span>
+                  </div>
+
+                  <div className="fieldHint" style={{ marginTop: 10 }}>
+                    * Menores de 4 años no abonan. 1 día = 50%. 2 días o campa completo = total.
+                  </div>
+                </>
+              )}
+
+              <div className="stickyBar" style={{ marginTop: 12 }}>
+                <Link className="btn secondary" href="/inscripcion/paso-2">
+                  ← Volver
+                </Link>
+                <button className="btn" onClick={pagar} disabled={loadingPay} type="button">
+                  {loadingPay ? "Procesando..." : "Confirmar y pagar"}
+                </button>
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
 
-        {/* Resumen */}
-        <div className="card" style={{ marginTop: 12 }}>
-          <h3>Resumen de pago</h3>
-
-          {!pricing ? (
-            <p style={{ opacity: 0.8 }}>Calculando...</p>
-          ) : (
-            <>
-              <p><b>Personas que pagan (≥ 4 años):</b> {pricing.payingPeople}</p>
-              <p><b>Precio por persona:</b> ${Number(pricing.pricePerPerson).toLocaleString("es-AR")}</p>
-              <p><b>Extras:</b> ${Number(pricing.extrasTotal).toLocaleString("es-AR")}</p>
-              <p>
-                <b>Total:</b>{" "}
-                <span style={{ fontSize: 18 }}>${Number(pricing.totalFinal).toLocaleString("es-AR")}</span>
-              </p>
-              <small>* Menores de 4 años no abonan. 1 día = 50%. 2 días o campa completo = total.</small>
-            </>
-          )}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-          <button className="btn" onClick={pagar} disabled={loadingPay}>
-            {loadingPay ? "Procesando..." : "Confirmar y pagar"}
-          </button>
-          <Link className="btn secondary" href="/inscripcion/paso-2">Volver</Link>
-        </div>
       </div>
     </Layout>
   );
