@@ -6,6 +6,10 @@ type OptionDays = "full" | "1" | "2";
 type OneDay = "viernes" | "sabado" | "domingo";
 type TwoDays = "viernes-sabado" | "sabado-domingo";
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
 export default function Paso1() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -31,6 +35,10 @@ export default function Paso1() {
         ? form.oneDay
         : form.twoDays;
   }, [form.optionDays, form.oneDay, form.twoDays]);
+
+  function setCount(next: number) {
+    setForm((p) => ({ ...p, count: clamp(next, 1, 20) })); // límite 20 (ajustalo si querés)
+  }
 
   function submit(e: any) {
     e.preventDefault();
@@ -60,13 +68,47 @@ export default function Paso1() {
             <div className="formGrid">
               <div>
                 <label>Cantidad de personas</label>
-                <input
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={form.count}
-                  onChange={(e) => setForm({ ...form, count: Math.max(1, Number(e.target.value || 1)) })}
-                />
+
+                {/* Control + / - (sin escribir) */}
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6 }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => setCount(form.count - 1)}
+                    disabled={form.count <= 1}
+                    aria-label="Restar"
+                    style={{ width: 56 }}
+                  >
+                    −
+                  </button>
+
+                  <div className="badgePill" style={{ justifyContent: "center", minWidth: 90 }}>
+                    {form.count}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => setCount(form.count + 1)}
+                    disabled={form.count >= 20}
+                    aria-label="Sumar"
+                    style={{ width: 56 }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Alternativa rápida: select */}
+                <div style={{ marginTop: 10 }}>
+                  <label style={{ marginTop: 0, opacity: 0.75 }}>Elegir</label>
+                  <select value={form.count} onChange={(e) => setCount(Number(e.target.value))}>
+                    {Array.from({ length: 20 }).map((_, i) => {
+                      const v = i + 1;
+                      return <option key={v} value={v}>{v} persona{v === 1 ? "" : "s"}</option>;
+                    })}
+                  </select>
+                </div>
+
                 <div className="fieldHint">Incluye al familiar principal.</div>
               </div>
 
