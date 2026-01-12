@@ -49,6 +49,34 @@ export default function Registro() {
         <h2>{primaryName}</h2>
         <p><b>Tel:</b> {phone} | <b>Email:</b> {email}</p>
         <p><b>Pago:</b> {reg.payment?.status}</p>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span>
+            <b>Entrega productos:</b>{" "}
+            {reg.extrasDelivered ? "✅ Entregadas" : "⏳ Pendiente"}
+            {reg.extrasDeliveredAt ? ` (${new Date(reg.extrasDeliveredAt).toLocaleString("es-AR")})` : ""}
+          </span>
+
+          {Array.isArray(reg.extras) && reg.extras.length ? (
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={async () => {
+                await fetch("/api/admin/toggle-extras-delivered", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ registrationId: reg._id, delivered: !reg.extrasDelivered })
+                });
+                const fresh = await fetch("/api/admin/registration?id=" + reg._id).then(r => r.json());
+                setReg(fresh);
+              }}
+            >
+              {reg.extrasDelivered ? "Marcar como NO entregadas" : "Marcar como entregadas"}
+            </button>
+          ) : (
+            <span style={{ opacity: 0.7 }}>(No compró productos)</span>
+          )}
+        </div>
+
       </div>
 
       {/* ✅ Productos */}
