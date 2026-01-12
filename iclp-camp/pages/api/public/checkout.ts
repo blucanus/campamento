@@ -37,6 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else {
     // actualizar datos si volvieron a intentar
     doc.step1 = step1;
+    doc.primary = {
+      name: `${step1.primaryFirstName} ${step1.primaryLastName}`.trim(),
+      phone: step1.phone,
+      email: step1.email
+    };
     doc.attendees = attendees;
   }
 
