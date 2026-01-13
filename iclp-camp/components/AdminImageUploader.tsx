@@ -4,10 +4,12 @@ export default function AdminImageUploader({
   folder = "products",
   value,
   onChange,
+  label = "Foto",
 }: {
   folder?: string;
   value?: string;
   onChange: (url: string) => void;
+  label?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export default function AdminImageUploader({
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "No se pudo subir");
 
-      onChange(j.url); // guardamos URL pública en Mongo
+      onChange(j.url); // ✅ guardamos URL pública
     } catch (e: any) {
       setErr(e?.message || "Error");
     } finally {
@@ -37,43 +39,52 @@ export default function AdminImageUploader({
     }
   }
 
-  return (
-    <div className="card" style={{ marginTop: 10 }}>
-      <label>Foto (upload)</label>
+  async function copy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {}
+  }
 
-      <input
-        type="file"
-        accept="image/*"
-        disabled={loading}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) upload(f);
-        }}
-      />
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <label>{label} (upload)</label>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          type="file"
+          accept="image/*"
+          disabled={loading}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) upload(f);
+          }}
+        />
+
+        {value ? (
+          <button className="btn secondary" type="button" onClick={copy}>
+            Copiar URL
+          </button>
+        ) : null}
+
+        {loading ? <small style={{ opacity: 0.8 }}>Subiendo...</small> : null}
+      </div>
 
       {value ? (
-        <div style={{ marginTop: 10, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10 }} />
+          <img src={value} alt="preview" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10 }} />
           <div style={{ wordBreak: "break-all", maxWidth: 520, opacity: 0.9 }}>{value}</div>
         </div>
       ) : (
-        <small style={{ display: "block", marginTop: 8, opacity: 0.85 }}>
+        <small style={{ opacity: 0.85 }}>
           Subí una imagen y se guardará la URL automáticamente.
         </small>
       )}
 
       {err ? (
-        <div className="alert" style={{ marginTop: 10 }}>
-          {err}
-        </div>
+        <div className="alert">{err}</div>
       ) : null}
-
-      <div style={{ marginTop: 10 }}>
-        <button className="btn" type="button" disabled={loading}>
-          {loading ? "Subiendo..." : "Listo"}
-        </button>
-      </div>
     </div>
   );
 }

@@ -68,7 +68,7 @@ export default function AdminVariants() {
         design,
         color,
         size: isTee ? size : "",
-        photoUrl, // ✅ acá ya viene la URL del uploader
+        photoUrl,
         stock,
         priceBundle,
         priceStandalone,
@@ -156,16 +156,20 @@ export default function AdminVariants() {
               <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Ej: Negro / Blanco / Azul" />
             </label>
 
-            <label style={{ display: isTee ? "block" : "none" }}>
-              Talle
-              <select value={size} onChange={(e) => setSize(e.target.value)}>
-                {["XS", "S", "M", "L", "XL"].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isTee ? (
+              <label>
+                Talle
+                <select value={size} onChange={(e) => setSize(e.target.value)}>
+                  {["XS", "S", "M", "L", "XL"].map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div />
+            )}
 
             <label>
               Stock
@@ -188,12 +192,13 @@ export default function AdminVariants() {
             </label>
           </div>
 
-          {/* ✅ UPLOADER: setea photoUrl */}
-          <div style={{ marginTop: 10 }}>
+          {/* ✅ UPLOADER VISIBLE */}
+          <div className="card" style={{ marginTop: 12 }}>
             <AdminImageUploader
               folder={`products/${productId || "general"}`}
               value={photoUrl}
               onChange={(url) => setPhotoUrl(url)}
+              label="Foto de la variante"
             />
           </div>
 
@@ -225,6 +230,7 @@ export default function AdminVariants() {
                 <th></th>
               </tr>
             </thead>
+
             <tbody>
               {variants.map((v) => (
                 <tr key={v.id}>
@@ -234,37 +240,46 @@ export default function AdminVariants() {
                   <td>{v.attributes?.color}</td>
                   <td>{v.attributes?.size || "-"}</td>
 
-                  {/* FOTO + UPLOADER */}
-                  <td style={{ minWidth: 320 }}>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {v.photoUrl ? (
-                        <img
-                          src={v.photoUrl}
-                          alt="foto"
-                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)" }}
+                  <td style={{ minWidth: 360 }}>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {v.photoUrl ? (
+                          <img
+                            src={v.photoUrl}
+                            alt="foto"
+                            style={{
+                              width: 44,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: 10,
+                              border: "1px solid rgba(0,0,0,0.08)",
+                            }}
+                          />
+                        ) : (
+                          <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(15,118,110,0.08)" }} />
+                        )}
+
+                        <input
+                          value={v.photoUrl || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, photoUrl: val } : x)));
+                          }}
+                          placeholder="URL de imagen..."
+                          style={{ width: 240 }}
                         />
-                      ) : (
-                        <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(15,118,110,0.08)" }} />
-                      )}
+                      </div>
 
-                      <input
-                        value={v.photoUrl || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, photoUrl: val } : x)));
-                        }}
-                        placeholder="URL de imagen..."
-                        style={{ width: 220 }}
-                      />
-
-                      <div style={{ width: 260 }}>
+                      {/* ✅ UPLOADER POR FILA */}
+                      <div className="card" style={{ margin: 0 }}>
                         <AdminImageUploader
                           folder={`products/${v.productId}`}
                           value={v.photoUrl}
                           onChange={(url) => {
                             setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, photoUrl: url } : x)));
                           }}
+                          label="Subir nueva foto"
                         />
                       </div>
                     </div>
@@ -281,6 +296,7 @@ export default function AdminVariants() {
                       style={{ width: 90 }}
                     />
                   </td>
+
                   <td>
                     <input
                       type="number"
@@ -292,6 +308,7 @@ export default function AdminVariants() {
                       style={{ width: 110 }}
                     />
                   </td>
+
                   <td>
                     <input
                       type="number"
@@ -303,6 +320,7 @@ export default function AdminVariants() {
                       style={{ width: 110 }}
                     />
                   </td>
+
                   <td>
                     <input
                       type="checkbox"
@@ -313,6 +331,7 @@ export default function AdminVariants() {
                       }}
                     />
                   </td>
+
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="btn" type="button" onClick={() => updateVariant(v)}>
                       Guardar
