@@ -1,8 +1,10 @@
 import Layout from "@/components/Layout";
-import { useEffect, useState } from "react";
+import AdminImageUploader from "@/components/AdminImageUploader";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 type Product = { id: string; name: string; type: "tee" | "cap"; isActive: boolean };
+
 type Variant = {
   id: string;
   productId: string;
@@ -36,20 +38,23 @@ export default function AdminVariants() {
     setLoading(true);
     try {
       const [p, v] = await Promise.all([
-        fetch("/api/admin/products").then(r => r.json()),
-        fetch("/api/admin/variants").then(r => r.json())
+        fetch("/api/admin/products").then((r) => r.json()),
+        fetch("/api/admin/variants").then((r) => r.json()),
       ]);
-      setProducts(p);
-      setVariants(v);
+      setProducts(p || []);
+      setVariants(v || []);
       if (!productId && p?.[0]?.id) setProductId(p[0].id);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const selectedProduct = products.find(p => p.id === productId);
+  const selectedProduct = useMemo(() => products.find((p) => p.id === productId), [products, productId]);
   const isTee = selectedProduct?.type === "tee";
 
   async function createVariant() {
@@ -63,17 +68,20 @@ export default function AdminVariants() {
         design,
         color,
         size: isTee ? size : "",
-        photoUrl,
+        photoUrl, // ✅ acá ya viene la URL del uploader
         stock,
         priceBundle,
-        priceStandalone
-      })
+        priceStandalone,
+      }),
     });
 
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return alert(j.error || "Error creando variante");
 
-    setDesign(""); setColor(""); setPhotoUrl(""); setStock(0);
+    setDesign("");
+    setColor("");
+    setPhotoUrl("");
+    setStock(0);
     await loadAll();
   }
 
@@ -87,8 +95,8 @@ export default function AdminVariants() {
         stock: v.stock,
         priceBundle: v.priceBundle,
         priceStandalone: v.priceStandalone,
-        isActive: v.isActive
-      })
+        isActive: v.isActive,
+      }),
     });
 
     const j = await r.json().catch(() => ({}));
@@ -101,7 +109,7 @@ export default function AdminVariants() {
     const r = await fetch("/api/admin/variants", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return alert(j.error || "Error borrando");
@@ -111,24 +119,29 @@ export default function AdminVariants() {
   return (
     <Layout title="Admin - Variantes de productos">
       <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <h2>Variantes de productos</h2>
-          <Link className="btn secondary" href="/admin">Volver</Link>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+          <h2 style={{ margin: 0 }}>Variantes de productos</h2>
+          <Link className="btn secondary" href="/admin">
+            Volver
+          </Link>
         </div>
 
         <p style={{ opacity: 0.8 }}>
           Creá variantes por diseño/color/talle (remeras) y diseño/color (gorras). Stock y foto por variante.
         </p>
 
+        {/* CREAR */}
         <div className="card" style={{ marginTop: 12 }}>
           <h3>Crear variante</h3>
 
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr 1fr" }}>
             <label>
               Producto
               <select value={productId} onChange={(e) => setProductId(e.target.value)}>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.type})
+                  </option>
                 ))}
               </select>
             </label>
@@ -146,7 +159,11 @@ export default function AdminVariants() {
             <label style={{ display: isTee ? "block" : "none" }}>
               Talle
               <select value={size} onChange={(e) => setSize(e.target.value)}>
-                {["XS","S","M","L","XL"].map(s => <option key={s} value={s}>{s}</option>)}
+                {["XS", "S", "M", "L", "XL"].map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -156,8 +173,8 @@ export default function AdminVariants() {
             </label>
 
             <label>
-              Foto (URL)
-              <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
+              Foto (URL manual opcional)
+              <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="(opcional) https://..." />
             </label>
 
             <label>
@@ -171,16 +188,28 @@ export default function AdminVariants() {
             </label>
           </div>
 
+          {/* ✅ UPLOADER: setea photoUrl */}
           <div style={{ marginTop: 10 }}>
-            <button className="btn" onClick={createVariant}>Guardar variante</button>
+            <AdminImageUploader
+              folder={`products/${productId || "general"}`}
+              value={photoUrl}
+              onChange={(url) => setPhotoUrl(url)}
+            />
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <button className="btn" type="button" onClick={createVariant}>
+              Guardar variante
+            </button>
           </div>
         </div>
 
+        {/* LISTADO */}
         <div className="card" style={{ marginTop: 12 }}>
           <h3>Listado</h3>
           {loading ? <p>Cargando...</p> : null}
 
-          <table>
+          <table style={{ width: "100%" }}>
             <thead>
               <tr>
                 <th>SKU</th>
@@ -197,31 +226,57 @@ export default function AdminVariants() {
               </tr>
             </thead>
             <tbody>
-              {variants.map(v => (
+              {variants.map((v) => (
                 <tr key={v.id}>
                   <td>{v.sku}</td>
                   <td>{v.productName}</td>
                   <td>{v.attributes?.design}</td>
                   <td>{v.attributes?.color}</td>
                   <td>{v.attributes?.size || "-"}</td>
-                  <td>
-                    <input
-                      value={v.photoUrl || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setVariants(prev => prev.map(x => x.id === v.id ? { ...x, photoUrl: val } : x));
-                      }}
-                      placeholder="https://..."
-                      style={{ width: 220 }}
-                    />
+
+                  {/* FOTO + UPLOADER */}
+                  <td style={{ minWidth: 320 }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {v.photoUrl ? (
+                        <img
+                          src={v.photoUrl}
+                          alt="foto"
+                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)" }}
+                        />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(15,118,110,0.08)" }} />
+                      )}
+
+                      <input
+                        value={v.photoUrl || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, photoUrl: val } : x)));
+                        }}
+                        placeholder="URL de imagen..."
+                        style={{ width: 220 }}
+                      />
+
+                      <div style={{ width: 260 }}>
+                        <AdminImageUploader
+                          folder={`products/${v.productId}`}
+                          value={v.photoUrl}
+                          onChange={(url) => {
+                            setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, photoUrl: url } : x)));
+                          }}
+                        />
+                      </div>
+                    </div>
                   </td>
+
                   <td>
                     <input
                       type="number"
                       value={v.stock}
                       onChange={(e) => {
                         const val = Number(e.target.value);
-                        setVariants(prev => prev.map(x => x.id === v.id ? { ...x, stock: val } : x));
+                        setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, stock: val } : x)));
                       }}
                       style={{ width: 90 }}
                     />
@@ -232,7 +287,7 @@ export default function AdminVariants() {
                       value={v.priceBundle}
                       onChange={(e) => {
                         const val = Number(e.target.value);
-                        setVariants(prev => prev.map(x => x.id === v.id ? { ...x, priceBundle: val } : x));
+                        setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, priceBundle: val } : x)));
                       }}
                       style={{ width: 110 }}
                     />
@@ -243,7 +298,7 @@ export default function AdminVariants() {
                       value={v.priceStandalone}
                       onChange={(e) => {
                         const val = Number(e.target.value);
-                        setVariants(prev => prev.map(x => x.id === v.id ? { ...x, priceStandalone: val } : x));
+                        setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, priceStandalone: val } : x)));
                       }}
                       style={{ width: 110 }}
                     />
@@ -254,25 +309,36 @@ export default function AdminVariants() {
                       checked={v.isActive}
                       onChange={(e) => {
                         const val = e.target.checked;
-                        setVariants(prev => prev.map(x => x.id === v.id ? { ...x, isActive: val } : x));
+                        setVariants((prev) => prev.map((x) => (x.id === v.id ? { ...x, isActive: val } : x)));
                       }}
                     />
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="btn" onClick={() => updateVariant(v)}>Guardar</button>{" "}
-                    <button className="btn secondary" onClick={() => deleteVariant(v.id)}>Borrar</button>
+                    <button className="btn" type="button" onClick={() => updateVariant(v)}>
+                      Guardar
+                    </button>{" "}
+                    <button className="btn secondary" type="button" onClick={() => deleteVariant(v.id)}>
+                      Borrar
+                    </button>
                   </td>
                 </tr>
               ))}
+
               {variants.length === 0 ? (
-                <tr><td colSpan={11} style={{ opacity: 0.7 }}>No hay variantes todavía.</td></tr>
+                <tr>
+                  <td colSpan={11} style={{ opacity: 0.7 }}>
+                    No hay variantes todavía.
+                  </td>
+                </tr>
               ) : null}
             </tbody>
           </table>
         </div>
 
         <div style={{ marginTop: 12 }}>
-          <Link className="btn" href="/admin/buy">Comprar productos (admin)</Link>
+          <Link className="btn" href="/admin/buy">
+            Comprar productos (admin)
+          </Link>
         </div>
       </div>
     </Layout>
