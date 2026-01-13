@@ -47,6 +47,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "POST") {
     const { productId, design, color, size, photoUrl, stock, priceBundle, priceStandalone } = req.body || {};
 
+    if (!productId || typeof productId !== "string") {
+      return res.status(400).json({ error: "Falta productId" });
+    }
+
+    // evita CastError si llega cualquier texto
+    if (!/^[a-fA-F0-9]{24}$/.test(productId)) {
+      return res.status(400).json({ error: "Producto inválido (productId no es ObjectId)" });
+    }
+
+
     const p = await Product.findById(productId);
     if (!p) return res.status(400).json({ error: "Producto inválido" });
 

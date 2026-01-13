@@ -21,18 +21,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const out = (products as any[]).map((p) => {
-    const list = byProduct.get(String(p._id)) || [];
+    const pid = String(p._id);
+    const list = byProduct.get(pid) || [];
     const stockTotal = list.reduce((acc, v) => acc + Number(v.stock || 0), 0);
-    const activeCount = list.filter(v => v.isActive).length;
+    const activeCount = list.filter((v) => v.isActive).length;
+
     return {
-      _id: String(p._id),
+      // ✅ compat con tu frontend
+      id: pid,
+
+      // si querés, lo dejamos también (no molesta)
+      _id: pid,
+
       name: p.name,
       type: p.type,
+      isActive: !!p.isActive,
+
       variantsCount: list.length,
       activeCount,
       stockTotal
     };
   });
 
-  res.json(out);
+  return res.status(200).json(out);
 }
