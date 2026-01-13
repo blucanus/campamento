@@ -63,11 +63,11 @@ export default function Paso3() {
 
   useEffect(() => {
     fetch("/api/public/variants")
-      .then(r => r.json())
+      .then((r) => r.json())
       .then((data) => {
         setVariants(data || []);
 
-        // set defaults
+        // defaults
         const first = (data || [])[0];
         if (first) {
           setSelType(first.productType);
@@ -93,10 +93,11 @@ export default function Paso3() {
   // quote server-side
   useEffect(() => {
     if (!step1) return;
+
     fetch("/api/public/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ step1, attendees, cart: cartArr })
+      body: JSON.stringify({ step1, attendees, cart: cartArr }),
     })
       .then(async (r) => {
         const j = await r.json().catch(() => ({}));
@@ -108,16 +109,16 @@ export default function Paso3() {
   }, [step1, attendees, cartArr]);
 
   const filtered = useMemo(() => {
-    return variants.filter(v => v.productType === selType);
+    return variants.filter((v) => v.productType === selType);
   }, [variants, selType]);
 
   const designs = useMemo(() => {
-    return Array.from(new Set(filtered.map(v => v.attributes.design))).sort();
+    return Array.from(new Set(filtered.map((v) => v.attributes.design))).sort();
   }, [filtered]);
 
   const colors = useMemo(() => {
     return Array.from(
-      new Set(filtered.filter(v => v.attributes.design === selDesign).map(v => v.attributes.color))
+      new Set(filtered.filter((v) => v.attributes.design === selDesign).map((v) => v.attributes.color))
     ).sort();
   }, [filtered, selDesign]);
 
@@ -126,14 +127,16 @@ export default function Paso3() {
     return Array.from(
       new Set(
         filtered
-          .filter(v => v.attributes.design === selDesign && v.attributes.color === selColor)
-          .map(v => v.attributes.size || "")
+          .filter((v) => v.attributes.design === selDesign && v.attributes.color === selColor)
+          .map((v) => v.attributes.size || "")
       )
-    ).filter(Boolean).sort();
+    )
+      .filter(Boolean)
+      .sort();
   }, [filtered, selDesign, selColor, selType]);
 
   const selectedVariant = useMemo(() => {
-    return filtered.find(v => {
+    return filtered.find((v) => {
       if (v.attributes.design !== selDesign) return false;
       if (v.attributes.color !== selColor) return false;
       if (selType === "tee") return (v.attributes.size || "") === selSize;
@@ -147,19 +150,19 @@ export default function Paso3() {
     const current = cart[id] || 0;
     const max = selectedVariant.stock;
     if (current + 1 > max) return alert("No hay más stock de esta variante");
-    setCart(prev => ({ ...prev, [id]: current + 1 }));
+    setCart((prev) => ({ ...prev, [id]: current + 1 }));
   }
 
   function removeOne() {
     if (!selectedVariant) return;
     const id = selectedVariant.variantId;
     const current = cart[id] || 0;
-    setCart(prev => ({ ...prev, [id]: Math.max(0, current - 1) }));
+    setCart((prev) => ({ ...prev, [id]: Math.max(0, current - 1) }));
   }
 
   function setQty(id: string, qty: number, stock: number) {
     const q = Math.max(0, Math.min(stock, qty));
-    setCart(prev => ({ ...prev, [id]: q }));
+    setCart((prev) => ({ ...prev, [id]: q }));
   }
 
   async function pagar() {
@@ -172,7 +175,7 @@ export default function Paso3() {
       const r = await fetch("/api/public/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step1, attendees, regId: existingRegId, cart: cartArr })
+        body: JSON.stringify({ step1, attendees, regId: existingRegId, cart: cartArr }),
       });
 
       const j = await r.json().catch(() => ({}));
@@ -209,13 +212,18 @@ export default function Paso3() {
       <Layout title="Confirmar inscripción">
         <div className="card">
           <div className="alert">No se encontraron datos del Paso 1.</div>
-          <Link className="btn" href="/inscripcion/paso-1">Ir a Paso 1</Link>
+          <Link className="btn" href="/inscripcion/paso-1">
+            Ir a Paso 1
+          </Link>
         </div>
       </Layout>
     );
   }
 
   const imgUrl = selectedVariant?.photoUrl ? normalizeDriveUrl(selectedVariant.photoUrl) : "";
+
+  // helpers UI
+  const money = (n: any) => `$${Number(n || 0).toLocaleString("es-AR")}`;
 
   return (
     <Layout title="Confirmar inscripción">
@@ -250,16 +258,28 @@ export default function Paso3() {
             <label>
               Diseño
               <select value={selDesign} onChange={(e) => setSelDesign(e.target.value)}>
-                <option value="" disabled>Seleccionar</option>
-                {designs.map(d => <option key={d} value={d}>{d}</option>)}
+                <option value="" disabled>
+                  Seleccionar
+                </option>
+                {designs.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label>
               Color
               <select value={selColor} onChange={(e) => setSelColor(e.target.value)}>
-                <option value="" disabled>Seleccionar</option>
-                {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" disabled>
+                  Seleccionar
+                </option>
+                {colors.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -267,7 +287,11 @@ export default function Paso3() {
               <label>
                 Talle
                 <select value={selSize} onChange={(e) => setSelSize(e.target.value)}>
-                  {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                  {sizes.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
               </label>
             ) : null}
@@ -293,15 +317,21 @@ export default function Paso3() {
             )}
 
             <div>
-              <div><b>{selectedVariant ? selectedVariant.sku : "Seleccioná una variante"}</b></div>
+              <div>
+                <b>{selectedVariant ? selectedVariant.sku : "Seleccioná una variante"}</b>
+              </div>
               <div style={{ opacity: 0.8 }}>
                 Stock: {selectedVariant ? selectedVariant.stock : "-"} — Precio:{" "}
-                ${selectedVariant ? Number(selectedVariant.priceBundle).toLocaleString("es-AR") : "-"}
+                {selectedVariant ? money(selectedVariant.priceBundle) : "-"}
               </div>
 
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button className="btn secondary" type="button" onClick={removeOne} disabled={!selectedVariant}>-</button>
-                <button className="btn" type="button" onClick={addOne} disabled={!selectedVariant}>Agregar</button>
+                <button className="btn secondary" type="button" onClick={removeOne} disabled={!selectedVariant}>
+                  -
+                </button>
+                <button className="btn" type="button" onClick={addOne} disabled={!selectedVariant}>
+                  Agregar
+                </button>
               </div>
             </div>
           </div>
@@ -330,7 +360,7 @@ export default function Paso3() {
                       <tr key={x.variantId}>
                         <td>{x.name}</td>
                         <td>{label}</td>
-                        <td>${Number(x.unitPrice).toLocaleString("es-AR")}</td>
+                        <td>{money(x.unitPrice)}</td>
                         <td>
                           <input
                             type="number"
@@ -341,7 +371,7 @@ export default function Paso3() {
                             style={{ width: 90 }}
                           />
                         </td>
-                        <td>${Number(x.lineTotal).toLocaleString("es-AR")}</td>
+                        <td>{money(x.lineTotal)}</td>
                       </tr>
                     );
                   })}
@@ -353,7 +383,9 @@ export default function Paso3() {
 
             {pricing?.errors?.length ? (
               <div className="alert" style={{ marginTop: 10 }}>
-                {pricing.errors.map((e: string, i: number) => <div key={i}>• {e}</div>)}
+                {pricing.errors.map((e: string, i: number) => (
+                  <div key={i}>• {e}</div>
+                ))}
               </div>
             ) : null}
           </div>
@@ -367,14 +399,51 @@ export default function Paso3() {
             <p style={{ opacity: 0.8 }}>Calculando...</p>
           ) : (
             <>
-              <p><b>Personas que pagan (≥ 4 años):</b> {pricing.payingPeople}</p>
-              <p><b>Precio por persona:</b> ${Number(pricing.pricePerPerson).toLocaleString("es-AR")}</p>
-              <p><b>Extras:</b> ${Number(pricing.extrasTotal).toLocaleString("es-AR")}</p>
               <p>
-                <b>Total:</b>{" "}
-                <span style={{ fontSize: 18 }}>${Number(pricing.totalFinal).toLocaleString("es-AR")}</span>
+                <b>Personas que pagan (≥ 4 años):</b> {pricing.payingPeople}
               </p>
-              <small>* Menores de 4 años no abonan. 1 día = 50%. 2 días o campa completo = total.</small>
+
+              <p>
+                <b>Precio por persona:</b> {money(pricing.pricePerPerson)}
+              </p>
+
+              {/* ✅ Descuento familiar aplicado */}
+              {Number(pricing.discountedCount || 0) > 0 ? (
+                <div className="card" style={{ marginTop: 10, background: "rgba(15,118,110,0.06)" }}>
+                  <b>✅ Descuento familiar aplicado</b>
+                  <div style={{ marginTop: 6, opacity: 0.9 }}>
+                    Desde el <b>5° miembro</b> que paga: <b>10% OFF</b> sobre el valor individual.
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <div>• Pagan sin descuento: <b>{pricing.normalCount}</b> persona(s)</div>
+                    <div>• Pagan con descuento: <b>{pricing.discountedCount}</b> persona(s)</div>
+                    <div>
+                      • Precio con descuento (c/u): <b>{money(pricing.discountedPricePerPerson)}</b>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <small style={{ display: "block", marginTop: 6, opacity: 0.9 }}>
+                  * Desde el 5° miembro que paga se aplica 10% OFF al valor individual.
+                </small>
+              )}
+
+              <p style={{ marginTop: 10 }}>
+                <b>Total inscripción campa:</b> <span style={{ fontSize: 18 }}>{money(pricing.campTotal ?? pricing.total)}</span>
+              </p>
+
+              <p>
+                <b>Extras:</b> {money(pricing.extrasTotal)}
+              </p>
+
+              <p>
+                <b>Total final:</b>{" "}
+                <span style={{ fontSize: 20 }}>{money(pricing.totalFinal)}</span>
+              </p>
+
+              <small>
+                * Menores de 4 años no abonan. 1 día = 50%. 2 días o campa completo = total.
+              </small>
             </>
           )}
         </div>
@@ -383,7 +452,9 @@ export default function Paso3() {
           <button className="btn" type="button" onClick={pagar} disabled={loadingPay}>
             {loadingPay ? "Procesando..." : "Confirmar y pagar"}
           </button>
-          <Link className="btn secondary" href="/inscripcion/paso-2">Volver</Link>
+          <Link className="btn secondary" href="/inscripcion/paso-2">
+            Volver
+          </Link>
         </div>
       </div>
 
@@ -399,7 +470,7 @@ export default function Paso3() {
             alignItems: "center",
             justifyContent: "center",
             padding: 18,
-            zIndex: 9999
+            zIndex: 9999,
           }}
         >
           <div
@@ -409,7 +480,7 @@ export default function Paso3() {
               background: "#fff",
               borderRadius: 14,
               overflow: "hidden",
-              border: "1px solid rgba(0,0,0,0.1)"
+              border: "1px solid rgba(0,0,0,0.1)",
             }}
           >
             <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -420,11 +491,7 @@ export default function Paso3() {
             </div>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={modalUrl}
-              alt="Producto"
-              style={{ width: "100%", height: "auto", display: "block" }}
-            />
+            <img src={modalUrl} alt="Producto" style={{ width: "100%", height: "auto", display: "block" }} />
           </div>
         </div>
       ) : null}

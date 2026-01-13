@@ -60,10 +60,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  const totalFinal = base.total + extrasTotal;
+  const campTotal = Number((base as any).campTotal ?? (base as any).total ?? 0);
+  const totalFinal = campTotal + extrasTotal;
 
   res.status(200).json({
     ...base,
+    campTotal,
     extrasTotal,
     extrasLines,
     totalFinal,

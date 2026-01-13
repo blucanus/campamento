@@ -38,7 +38,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
   const primary = normalizePrimary(step1);
-
   if (!primary.email) return res.status(400).json({ error: "Email requerido" });
 
   await connectDB();
@@ -53,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!doc) {
     doc = await Registration.create({
       step1,
-      primary, // ✅ CLAVE: guardar primary al crear
+      primary, // ✅ guardar primary al crear
       attendees,
       extras: [],
       payment: { status: "pending" }
@@ -76,10 +75,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ regId: String(doc._id), init_point: doc.payment.initPoint });
   }
 
-  // pricing base
+  // ✅ pricing base con descuento por 5to+
   const base = computeTotalARS(step1, attendees);
-  const payingPeople = Number(base.payingPeople || 0);
-  const pricePerPerson = Number(base.pricePerPerson || 0);
+  const campTotal = Number((base as any).campTotal ?? (base as any).total ?? 0);
 
   // extras
   const cartItems: CartItem[] = Array.isArray(cart) ? cart : [];
@@ -130,11 +128,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   doc.extras = extras;
 
+  // ✅ Opción A: un solo item total para el campa (ya incluye el descuento familiar)
   const items = [
     {
       title: "Inscripción Campamento ICLP",
-      quantity: payingPeople,
-      unit_price: pricePerPerson,
+      quantity: 1,
+      unit_price: campTotal,
       currency_id: "ARS" as const
     },
     ...mpExtras
