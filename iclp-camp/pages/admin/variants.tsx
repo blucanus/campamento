@@ -160,7 +160,7 @@ export default function AdminVariants() {
               <label>
                 Talle
                 <select value={size} onChange={(e) => setSize(e.target.value)}>
-                  {["XS", "S", "M", "L", "XL"].map((s) => (
+                  {["M","L","XL","XXL","3XL","4XL","5XL"].map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
