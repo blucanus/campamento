@@ -224,8 +224,8 @@ export default function Home() {
               <div className="lp-map-placeholder">
                 <iframe
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3253.56791744986!2d-57.33937452350733!3d-35.36636799817604!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x959899c7001d84fd%3A0xd812d8bcd5ecb77c!2sCAMPAMENTO%20ELIM!5e0!3m2!1ses!2sar!4v1768421328853!5m2!1ses!2sar"
-                  width={600}
-                  height={450}
+                  
+                 
                   style={{ border: 0 }}
                   allowFullScreen
                   loading="lazy"

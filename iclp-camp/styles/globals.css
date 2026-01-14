@@ -48,6 +48,11 @@ small{ color:var(--muted); }
   justify-content:center;
   margin-bottom: 50px;
 }
+@media (max-width: 899px) {
+.lp-logo {
+    width: auto;
+  }
+}
 
 .lp-title{
   font-size: 34px;
