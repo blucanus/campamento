@@ -10,7 +10,7 @@ export default function Home() {
           <div className="lp-hero-left">
             <div className="lp-logo">
               <Image
-                src="/logo-campa-2026.png"
+                src="/logo.png"
                 alt="Campa ICLP 2026"
                 width={160}
                 height={160}
