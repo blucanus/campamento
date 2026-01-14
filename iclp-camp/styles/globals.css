@@ -43,14 +43,10 @@ small{ color:var(--muted); }
 .lp-logo{
   width: 96px;
   height: 96px;
-  border-radius: 18px;
-  background: white;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow: 0 10px 30px rgba(0,0,0,.08);
-  border: 1px solid rgba(0,0,0,0.06);
-  margin-bottom: 12px;
+  margin-bottom: 50px;
 }
 
 .lp-title{

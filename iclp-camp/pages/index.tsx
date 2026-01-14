@@ -19,11 +19,17 @@ export default function Home() {
             </div>
 
             <h1 className="lp-title">
-              Campamento ICLP <span className="lp-badge">2026</span>
+              Campamento Familiar ICLP <span className="lp-badge">2026</span>
             </h1>
 
+            <h2 className="lp-subtitle">
+              “Hasta que nos venga a buscar”
+            </h2>
             <p className="lp-subtitle">
-              Un fin de semana para encontrarnos con Dios, hacer comunidad y volver renovados.
+              La inscripción es 100% digital desde esta web.
+            </p>
+            <p className="lp-subtitle">
+              Creemos que los campamentos no son solo un evento más en el calendario. Son una invitación de Dios a detenernos, a salir del ruido cotidiano y a volver a encontrarnos con Él y con los demás.
             </p>
 
             <div className="lp-meta">
@@ -51,9 +57,9 @@ export default function Home() {
               <h3>Lo esencial</h3>
               <ul className="lp-list">
                 <li>✅ Inscripción online en menos de 2 minutos</li>
-                <li>✅ Pago con Mercado Pago</li>
+                <li>✅ Pago con Mercado Pago (Crédito, Débito, Efectivo)</li>
+                <li>✅ No es necesario tener cuenta de Mercado Pago</li>
                 <li>✅ Después te avisamos habitación y cama</li>
-                <li>✅ Check-in rápido con QR en el campa</li>
               </ul>
 
               <div className="lp-divider" />
@@ -89,28 +95,34 @@ export default function Home() {
             <div className="card lp-card">
               <h3>¿Qué es?</h3>
               <p>
-                Un tiempo especial para desconectarnos de lo de siempre y enfocarnos en lo que importa:
-                Dios, la comunión, el descanso y la palabra.
+                El Campamento Familiar de la ICLP es un tiempo apartado para Dios.
+                Un fin de semana para dejar por un momento las preocupaciones, las agendas y volver a lo esencial: la presencia de Dios, la comunión entre hermanos y a la Palabra que nos ordena y renueva.
+              </p>
+              <p>
+                Es un espacio para compartir en familia, para reír, para orar, para escuchar y para permitir que Dios haga su obra en nosotros.
+
               </p>
             </div>
 
             <div className="card lp-card">
               <h3>¿Qué incluye?</h3>
               <ul className="lp-list">
-                <li>🍽️ Comidas (según tu dieta)</li>
-                <li>🛏️ Alojamiento (según asignación)</li>
-                <li>🎤 Reuniones, actividades y tiempos de equipo</li>
-                <li>🧾 Gestión y control desde la web</li>
+                <li>🍽️ <strong>Comida:</strong><br />
+                  Incluye desayuno, almuerzo y cena.<br />
+                  Si tenés alguna restricción alimentaria específica, te pedimos que puedas traer tu propia comida.</li>
+                <li>🛏️ <strong>Alojamiento:</strong><br />
+                  Alojamiento asignado según la organización del campamento.
+                </li>
+                <li>🎤 <strong>Reuniones, actividades y tiempos de equipo:</strong><br />
+                  Espacios de alabanza, Palabra, comunión y actividades para compartir como iglesia y como familias.</li>
               </ul>
             </div>
 
             <div className="card lp-card">
               <h3>¿Quiénes pueden ir?</h3>
               <p>
-                Familias, jóvenes y adultos. Si alguien tiene <b>menos de 4 años</b>, no se le cobra.
-              </p>
-              <p className="lp-muted">
-                Las restricciones alimentarias se indican en la inscripción.
+                El campamento está pensado para toda la familia.<br />
+                Los niños <strong>menores de 4 años</strong> no abonan inscripción y tenemos promoción a partir de quinto miembro familiar.
               </p>
             </div>
           </div>
@@ -122,7 +134,7 @@ export default function Home() {
         <div className="container">
           <div className="lp-section-head">
             <h2>Precios</h2>
-            <p>Reglas simples para que no haya confusión.</p>
+            <p>Valores hasta el 31/01/2026</p>
           </div>
 
           <div className="lp-grid-2">
@@ -130,7 +142,7 @@ export default function Home() {
               <h3>Campamento completo (2 días o más)</h3>
               <p className="lp-price">
                 <span className="lp-price-big">$</span>
-                <b>Precio total</b>
+                <b>$ 63.000</b>por persona
               </p>
               <p className="lp-muted">
                 Si elegís 2 días (Vie-Sáb o Sáb-Dom) o todo el campa, abonás el total.
@@ -198,7 +210,6 @@ export default function Home() {
         <div className="container">
           <div className="lp-section-head">
             <h2>Ubicación</h2>
-            <p>Agregamos dirección y mapa cuando lo confirmen.</p>
           </div>
 
           <div className="card lp-card">
@@ -206,12 +217,20 @@ export default function Home() {
               <div>
                 <h3>Cómo llegar</h3>
                 <p className="lp-muted">
-                  Dirección: <b>Próximamente</b> <br />
-                  Punto de encuentro: <b>Próximamente</b>
+                  Dirección: <b>Campamento Elim - Verónica</b>
+
                 </p>
               </div>
               <div className="lp-map-placeholder">
-                <span>Mapa / ubicación</span>
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3253.56791744986!2d-57.33937452350733!3d-35.36636799817604!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x959899c7001d84fd%3A0xd812d8bcd5ecb77c!2sCAMPAMENTO%20ELIM!5e0!3m2!1ses!2sar!4v1768421328853!5m2!1ses!2sar"
+                  width={600}
+                  height={450}
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
               </div>
             </div>
           </div>
@@ -227,23 +246,55 @@ export default function Home() {
 
           <div className="lp-faq">
             <details className="lp-faq-item">
-              <summary>¿Cómo sé si el pago quedó confirmado?</summary>
-              <p>Te llega un mail cuando cargás la inscripción y otro cuando el pago se aprueba.</p>
+              <summary>Quiero ir  1 día:</summary>
+              <p>1 día de campa: Para ir 1 solo día al campa abonás el 50% de la entrada general, que sería un total de $32.500.</p>
             </details>
 
             <details className="lp-faq-item">
-              <summary>¿Cuándo me dicen habitación y cama?</summary>
-              <p>Antes de la fecha del campa te va a llegar esa info por mail.</p>
+              <summary>Quiero ir  2 días:</summary>
+              <p>Quienes participan dos días (viernes y sábado, o sábado y domingo)  abonan el valor total.</p>
             </details>
 
             <details className="lp-faq-item">
-              <summary>¿Puedo inscribir a toda mi familia junta?</summary>
-              <p>Sí, en el paso 1 elegís cuántas personas se anotan y luego cargás los datos de cada integrante.</p>
+              <summary>Formas de pago</summary>
+              <p>Podés hacer el pago de forma digital mediante tarjeta de débito, crédito o dinero en cuenta en el último paso de la inscripción se te va a llevar a Mercado Pago (no es necesario tener cuenta) y ahí elegís el método de pago o inicias sesión para usar dinero en cuenta o tus tarjetas guardadas.</p>
+              <p>
+                Si querés abonar en efectivo lo podés hacer mediante Rapipago o Pago Fácil con el cupón que se genera luego de que se te dirige a Mercado Pago.
+              </p>
             </details>
 
             <details className="lp-faq-item">
-              <summary>¿Qué pasa si alguien es menor de 4 años?</summary>
-              <p>No se cobra, pero sí se registra para la organización.</p>
+              <summary>Ubicación</summary>
+              <p>El campamento Elim, está ubicado en la ciudad de Verónica a 91 Km de La Plata, 1hr y 20 min aproximados. Te dejamos el link de Google Maps para que te guie en como llegar. https://maps.app.goo.gl/YwMEDeD5yiQG342b8</p>
+            </details>
+
+            <details className="lp-faq-item">
+              <summary>Transporte Daniel Gadea/ Micro particular</summary>
+              <p>Si necesitas transporte, el hermano Daniel Gadea ofrece su micro por un costo adicional. Coordina con él al 2216 37-4066.</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>¿Puedo elegir cama?</summary>
+              <p>Las camas se asignarán prioritariamente a quienes tengan limitaciones físicas. No se podrá cambiar de cama ni habitación durante el campamento, ¡gracias por tu comprensión!</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>Dormir en carpa: </summary>
+              <p>Si querés traer tu carpa  y dormir en ella, tendremos un espacio listo. Recordá que el costo de la entrada general es el mismo.</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>Ropa de cama: </summary>
+              <p>Recordá Llevar sábana y funda para la almohada. La habitación ya tiene frazadas y almohada.</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>Menores de edad: </summary>
+              <p>Niños de 5 a 11 años:  Todos los niños deben ir con mamá, papá o tutor. ¡Sin excepciones!</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>Menores de 15 años:</summary>
+              <p>Los adolescentes menores de 15 años pueden viajar con un adulto responsable. Solo necesitan una autorización firmada por sus padres, sin excepción.</p>
+            </details>
+            <details className="lp-faq-item">
+              <summary>Mayores de 15 años: </summary>
+              <p>Los adolescentes mayores de 15 años pueden viajar solos con una autorización firmada por sus padres, sin excepción.</p>
             </details>
           </div>
 
