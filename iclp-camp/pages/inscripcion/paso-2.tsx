@@ -285,7 +285,7 @@ export default function Paso2() {
                     </p>
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <a className="btn secondary" href="/nota-autorizacion.pdf" target="_blank" rel="noreferrer">
+                      <a className="btn secondary" href="/autorizacion-menores.pdf" target="_blank" rel="noreferrer">
                         Descargar autorización
                       </a>
 
