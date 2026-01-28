@@ -298,16 +298,19 @@ export default function Home() {
             </details>
           </div>
 
-          <div className="lp-cta lp-center" style={{ marginTop: 16 }}>
+          <div className="lp-cta lp-center gap-2" style={{ marginTop: 16 }}>
             <Link className="btn lp-btn-primary" href="/inscripcion/paso-1">
               Inscribirme
+            </Link>
+            <Link className="btn lp-btn-secondary lp-sticky-btn" href="/merch">
+              Comprar merch
             </Link>
           </div>
         </div>
       </section>
 
       {/* CTA fijo mobile */}
-      <div className="lp-sticky-cta">
+      <div className="lp-sticky-cta gap-2">
         <Link className="btn lp-btn-primary lp-sticky-btn" href="/inscripcion/paso-1">
           Inscribirme
         </Link>
