@@ -234,6 +234,7 @@ small{ color:var(--muted); }
   display:flex;
   justify-content:center;
   z-index: 999;
+  gap: 10px;
 }
 
 .lp-sticky-btn{

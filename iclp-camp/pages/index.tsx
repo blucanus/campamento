@@ -42,6 +42,9 @@ export default function Home() {
               <Link className="btn lp-btn-primary" href="/inscripcion/paso-1">
                 Inscribirme
               </Link>
+              <Link className="btn lp-btn-secondary lp-sticky-btn" href="/merch">
+              Comprar merch
+            </Link>
               <a className="btn secondary" href="#info">
                 Ver información
               </a>
@@ -75,6 +78,9 @@ export default function Home() {
                 <Link className="btn lp-btn-primary" href="/inscripcion/paso-1">
                   Empezar inscripción
                 </Link>
+                <Link className="btn lp-btn-secondary lp-sticky-btn" href="/merch">
+              Comprar merch
+            </Link>
               </div>
             </div>
           </div>
@@ -163,6 +169,9 @@ export default function Home() {
           <div className="lp-cta lp-center" style={{ marginTop: 18 }}>
             <Link className="btn lp-btn-primary" href="/inscripcion/paso-1">
               Inscribirme ahora
+            </Link>
+            <Link className="btn lp-btn-secondary lp-sticky-btn" href="/merch">
+              Comprar merch
             </Link>
           </div>
         </div>
@@ -298,7 +307,7 @@ export default function Home() {
             </details>
           </div>
 
-          <div className="lp-cta lp-center gap-2" style={{ marginTop: 16 }}>
+          <div className="lp-cta lp-center" style={{ marginTop: 16 }}>
             <Link className="btn lp-btn-primary" href="/inscripcion/paso-1">
               Inscribirme
             </Link>
@@ -310,7 +319,7 @@ export default function Home() {
       </section>
 
       {/* CTA fijo mobile */}
-      <div className="lp-sticky-cta gap-2">
+      <div className="lp-sticky-cta">
         <Link className="btn lp-btn-primary lp-sticky-btn" href="/inscripcion/paso-1">
           Inscribirme
         </Link>
