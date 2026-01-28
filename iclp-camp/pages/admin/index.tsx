@@ -3,7 +3,7 @@ import Badge from "@/components/Badge";
 import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import { useEffect, useState } from "react";
 
-function AdminTabs({ active }: { active: "inscripciones" | "reportes" | "productos" }) {
+function AdminTabs({ active }: { active: "inscripciones" | "reportes"  }) {
   const Item = ({ href, label, keyName }: any) => (
     <a
       href={href}
@@ -24,7 +24,6 @@ function AdminTabs({ active }: { active: "inscripciones" | "reportes" | "product
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <Item href="/admin" label="Inscripciones" keyName="inscripciones" />
       <Item href="/admin/reportes" label="Reportes" keyName="reportes" />
-      <Item href="/admin/productos" label="Productos" keyName="productos" />
     </div>
   );
 }
@@ -58,6 +57,7 @@ export default function Admin() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <a className="btn" href="/inscripcion/paso-1?admin=1">➕ Inscribir</a>
+            <a className="btn" href="/merch">➕ Comprar MERCH</a>
             <a className="btn secondary" href="/api/admin/export?format=csv">CSV</a>
             <a className="btn secondary" href="/api/admin/export?format=xlsx">Excel</a>
           </div>
