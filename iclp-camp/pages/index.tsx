@@ -311,6 +311,9 @@ export default function Home() {
         <Link className="btn lp-btn-primary lp-sticky-btn" href="/inscripcion/paso-1">
           Inscribirme
         </Link>
+        <Link className="btn lp-btn-secondary lp-sticky-btn" href="/merch">
+          Comprar merch
+        </Link>
       </div>
     </div>
   );
