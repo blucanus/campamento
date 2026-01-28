@@ -19,7 +19,10 @@ const AttendeeSchema = new Schema(
     diet: String,
     sex: String,
     isPrimary: { type: Boolean, default: false },
-    lodging: { type: LodgingSchema, default: {} }
+    lodging: { type: LodgingSchema, default: {} },
+    consentRequired: { type: Boolean, default: false },
+consentUrl: { type: String, default: "" },
+
   },
   { _id: true }
 );

@@ -45,6 +45,7 @@ export default function Registro() {
   useEffect(() => {
     if (!id) return;
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function save(attId: string, lodging: any) {
@@ -83,7 +84,7 @@ export default function Registro() {
 
     const next = !reg.extrasDelivered;
 
-    // ✅ Optimistic UI: cambia badge inmediatamente
+    // ✅ Optimistic UI
     setReg((prev: any) => ({
       ...prev,
       extrasDelivered: next,
@@ -100,7 +101,6 @@ export default function Registro() {
       });
       const j = await r.json();
 
-      // fijar estado desde la respuesta del server
       setReg((prev: any) => ({
         ...prev,
         extrasDelivered: j.extrasDelivered,
@@ -109,12 +109,9 @@ export default function Registro() {
       }));
 
       toast.show(next ? "✅ Marcado como ENTREGADO" : "↩️ Marcado como NO entregado", "success");
-
-      // refresco opcional (ya no debería cambiarlo)
       await load();
-
     } catch {
-      // rollback si falla
+      // rollback
       setReg((prev: any) => ({
         ...prev,
         extrasDelivered: !next
@@ -124,6 +121,27 @@ export default function Registro() {
       setSavingDelivery(false);
     }
   }
+
+  async function copyPayLink() {
+    const link = String(reg?.payment?.initPoint || "");
+    if (!link) {
+      toast.show("No hay link de pago guardado.", "danger");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.show("📋 Link de pago copiado", "success");
+    } catch {
+      // fallback viejo
+      const ok = window.prompt("Copiá el link:", link);
+      if (ok !== null) toast.show("📋 Link listo para copiar", "success");
+    }
+  }
+
+  const showCopyPay =
+    !!reg?.payment?.initPoint &&
+    String(reg?.payment?.status || "").toLowerCase() !== "approved";
 
   if (!reg) {
     return (
@@ -165,9 +183,17 @@ export default function Registro() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <AdminTabsMini />
+
             <button className="btn secondary" type="button" onClick={() => back()}>
               ← Volver
             </button>
+
+            {showCopyPay ? (
+              <button className="btn secondary" type="button" onClick={copyPayLink}>
+                📋 Copiar link de pago
+              </button>
+            ) : null}
+
             {hasExtras ? (
               <button className="btn" type="button" onClick={toggleDelivered} disabled={savingDelivery}>
                 {savingDelivery ? "Guardando..." : reg.extrasDelivered ? "Marcar NO entregadas" : "Marcar entregadas"}
@@ -229,7 +255,9 @@ export default function Registro() {
           <table style={{ width: "100%" }}>
             <thead>
               <tr>
-                <th>Nombre</th><th>DNI</th><th>Edad</th><th>Relación</th><th>Dieta</th><th>Sexo</th><th>Habitación</th><th>Cama</th><th>Guardar</th>
+                <th>Nombre</th><th>DNI</th><th>Edad</th><th>Relación</th><th>Sexo</th><th>Autorización</th>
+                <th>Habitación</th><th>Cama</th><th>Guardar</th>
+
               </tr>
             </thead>
             <tbody>
@@ -249,14 +277,31 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
   const [room, setRoom] = useState(a.lodging?.room || "");
   const [bed, setBed] = useState(a.lodging?.bed || "none");
 
+  const consentNeeded = a.age >= 15 && a.age <= 18;
+
   return (
     <tr>
       <td>{a.firstName} {a.lastName}{a.isPrimary ? " (Principal)" : ""}</td>
       <td>{a.dni}</td>
       <td>{a.age}</td>
       <td>{a.relation}</td>
-      <td>{a.diet}</td>
       <td>{a.sex}</td>
+
+      {/* ✅ Autorización */}
+      <td>
+        {consentNeeded ? (
+          a.consentUrl ? (
+            <a className="btn secondary" href={a.consentUrl} target="_blank" rel="noreferrer">
+              Ver archivo
+            </a>
+          ) : (
+            <span style={{ fontWeight: 800, color: "#b91c1c" }}>Falta</span>
+          )
+        ) : (
+          <span style={{ opacity: 0.7 }}>—</span>
+        )}
+      </td>
+
       <td>
         <input value={room} onChange={e => setRoom(e.target.value)} placeholder="Ej: H3 / Dpto 2" />
         <div style={{ marginTop: 6 }}>
@@ -267,6 +312,7 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
           </select>
         </div>
       </td>
+
       <td>
         <select value={bed} onChange={e => setBed(e.target.value)} disabled={type !== "bunk"}>
           <option value="none">-</option>
@@ -274,6 +320,7 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
           <option value="abajo">Abajo</option>
         </select>
       </td>
+
       <td>
         <button className="btn" type="button" onClick={() => onSave({ type, room, bed: type === "bunk" ? bed : "none" })}>
           Guardar
@@ -282,3 +329,4 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
     </tr>
   );
 }
+
