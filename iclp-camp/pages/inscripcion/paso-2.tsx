@@ -15,11 +15,19 @@ const emptyPerson = () => ({
 
   // ✅ autorización
   consentRequired: false,
-  consentUrl: ""
+  consentUrl: "",
+  consentCode: "",
+  _id: "" // cuando exista en DB
 });
 
-function needsConsent(ageNum: number) {
-  return ageNum >= 15 && ageNum <= 18;
+function ageNumOf(a: any) {
+  return Number(String(a?.age || "").trim() || 0);
+}
+
+// ✅ nueva regla: 15-17 inclusive, SOLO si no hay principal > 18
+function computeConsentRequired(ageNum: number, hasAdultPrimary: boolean) {
+  if (hasAdultPrimary) return false;
+  return ageNum >= 15 && ageNum <= 17;
 }
 
 export default function Paso2() {
@@ -110,23 +118,62 @@ export default function Paso2() {
     router.push("/inscripcion/paso-1");
   }
 
-  // ✅ subir autorización (queda asociada al integrante dentro de step2 local)
+  // ✅ crea draft si no existe regId, para tener attendeeId y poder subir archivos sin loop
+  async function ensureDraft(): Promise<boolean> {
+    const existing = localStorage.getItem("regId") || "";
+    if (existing) return true;
+    if (!step1) return false;
+
+    // Normalizamos edades
+    const normalizedLocal = attendees.map((a) => ({
+      ...a,
+      age: ageNumOf(a)
+    }));
+
+    try {
+      const r = await fetch("/api/public/create-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step1, attendees: normalizedLocal })
+      });
+
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "No se pudo crear borrador");
+
+      localStorage.setItem("regId", j.regId);
+
+      // Matcheo por índice (el draft se crea con el mismo orden)
+      setAttendees((prev) => {
+        const next = prev.map((p, idx) => ({
+          ...p,
+          _id: j.attendees?.[idx]?._id || p._id
+        }));
+        localStorage.setItem("step2", JSON.stringify(next));
+        return next;
+      });
+
+      return true;
+    } catch (e: any) {
+      alert(e?.message || "Error creando borrador");
+      return false;
+    }
+  }
+
+  // ✅ subir autorización (asociada al integrante dentro de DB)
   async function uploadConsent(i: number, file: File) {
     setUploadErr((p) => ({ ...p, [i]: "" }));
     setUploading((p) => ({ ...p, [i]: true }));
 
     try {
+      const ok = await ensureDraft();
+      if (!ok) throw new Error("No se pudo generar la inscripción (regId).");
+
       const regId = localStorage.getItem("regId") || "";
-      if (!regId) throw new Error("Primero avanzá al Paso 3 para generar tu inscripción (regId).");
+      if (!regId) throw new Error("No se pudo generar regId.");
 
       const att = attendees[i];
-      const attId = att?._id; // OJO: si aún no existe _id (solo local), lo manejamos abajo
-
-      if (!attId) {
-        // como todavía no existe en DB, lo guardamos en local y lo subimos en checkout (opcional)
-        // pero como vos querés verlo en admin, lo ideal es subirlo DESPUÉS de crear el registro.
-        throw new Error("Aún no existe el ID del integrante. Continuá al Paso 3 y volvé a Paso 2.");
-      }
+      const attId = att?._id;
+      if (!attId) throw new Error("No se pudo obtener el ID del integrante. Reintentá.");
 
       const fd = new FormData();
       fd.append("file", file);
@@ -137,7 +184,23 @@ export default function Paso2() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "No se pudo subir");
 
-      update(i, { consentRequired: true, consentUrl: j.url });
+      // ✅ guardamos en local el url + code como pediste
+      update(i, {
+        consentRequired: true,
+        consentUrl: j.url || "",
+        consentCode: j.code || ""
+      });
+
+      // persist local step2
+      setTimeout(() => {
+        const s2 = JSON.parse(localStorage.getItem("step2") || "[]");
+        if (Array.isArray(s2) && s2[i]) {
+          s2[i].consentUrl = j.url || "";
+          s2[i].consentCode = j.code || "";
+          localStorage.setItem("step2", JSON.stringify(s2));
+        }
+      }, 0);
+
     } catch (e: any) {
       setUploadErr((p) => ({ ...p, [i]: e?.message || "Error" }));
     } finally {
@@ -149,26 +212,34 @@ export default function Paso2() {
     e.preventDefault();
     if (!hasPrimary) setPrimary(0);
 
-    const normalized = attendees.map((a) => {
-      const ageNum = Number(String(a.age || "").trim() || 0);
-      const req = needsConsent(ageNum);
+    // Normalizamos edades
+    const normalized = attendees.map((a) => ({
+      ...a,
+      age: ageNumOf(a)
+    }));
 
+    // ✅ regla global: ¿hay principal > 18?
+    const hasAdultPrimary = normalized.some((a) => a.isPrimary && Number(a.age || 0) > 18);
+
+    // ✅ aplicamos consentimiento según la regla nueva
+    const withConsent = normalized.map((a) => {
+      const req = computeConsentRequired(Number(a.age || 0), hasAdultPrimary);
       return {
         ...a,
-        age: ageNum,
         consentRequired: req,
-        consentUrl: String(a.consentUrl || "")
+        consentUrl: String(a.consentUrl || ""),
+        consentCode: String(a.consentCode || "")
       };
     });
 
-    // ✅ validación obligatoria
-    const missing = normalized.find((a) => a.consentRequired && !a.consentUrl);
+    // ✅ validación obligatoria SOLO para los que realmente lo requieren
+    const missing = withConsent.find((a) => a.consentRequired && !a.consentUrl);
     if (missing) {
-      alert("Falta subir la autorización firmada para al menos un integrante (15 a 18 años).");
+      alert("Falta subir la autorización firmada para al menos un integrante (15 a 17 años).");
       return;
     }
 
-    localStorage.setItem("step2", JSON.stringify(normalized));
+    localStorage.setItem("step2", JSON.stringify(withConsent));
     router.push("/inscripcion/paso-3");
   }
 
@@ -191,143 +262,154 @@ export default function Paso2() {
         </div>
 
         <form onSubmit={submit}>
-          {attendees.map((a, i) => {
-            const ageNum = Number(String(a.age || "").trim() || 0);
-            const req = needsConsent(ageNum);
+          {(() => {
+            // ✅ calculamos globalmente una vez por render
+            const normalized = attendees.map((a) => ({ ...a, age: ageNumOf(a) }));
+            const hasAdultPrimary = normalized.some((a) => a.isPrimary && Number(a.age || 0) > 18);
 
-            return (
-              <div className="card cardTight" key={i}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                  <h3 style={{ margin: 0 }}>
-                    Persona #{i + 1} {a.isPrimary ? <span className="badgePill">⭐ Principal</span> : null}
-                  </h3>
+            return attendees.map((a, i) => {
+              const ageNum = ageNumOf(a);
+              const req = computeConsentRequired(ageNum, hasAdultPrimary);
 
-                  {!a.isPrimary ? (
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      onClick={() => setPrimary(i)}
-                      style={{ borderRadius: 999, fontWeight: 900 }}
-                    >
-                      Hacer principal
-                    </button>
-                  ) : (
-                    <span className="badgePill">Este es el familiar principal</span>
-                  )}
-                </div>
+              return (
+                <div className="card cardTight" key={i}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <h3 style={{ margin: 0 }}>
+                      Persona #{i + 1} {a.isPrimary ? <span className="badgePill">⭐ Principal</span> : null}
+                    </h3>
 
-                <div className="formGrid" style={{ marginTop: 10 }}>
-                  <div>
-                    <label>Nombre</label>
-                    <input value={a.firstName} required onChange={(e) => update(i, { firstName: e.target.value })} />
-                  </div>
-
-                  <div>
-                    <label>Apellido</label>
-                    <input value={a.lastName} required onChange={(e) => update(i, { lastName: e.target.value })} />
-                  </div>
-
-                  <div>
-                    <label>DNI</label>
-                    <input
-                      value={a.dni}
-                      required
-                      inputMode="numeric"
-                      placeholder="Sin puntos"
-                      onChange={(e) => update(i, { dni: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label>Edad</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="Ej: 12"
-                      value={a.age ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/[^\d]/g, "");
-                        update(i, { age: v });
-                      }}
-                      required
-                    />
-                    <div className="fieldHint">Menores de 4 años no abonan.</div>
-                  </div>
-
-                  <div>
-                    <label>Relación con el principal</label>
-                    {a.isPrimary ? (
-                      <input value="Principal" disabled />
+                    {!a.isPrimary ? (
+                      <button
+                        type="button"
+                        className="btn secondary"
+                        onClick={() => setPrimary(i)}
+                        style={{ borderRadius: 999, fontWeight: 900 }}
+                      >
+                        Hacer principal
+                      </button>
                     ) : (
-                      <select value={a.relation} onChange={(e) => update(i, { relation: e.target.value })}>
-                        {REL_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                      <span className="badgePill">Este es el familiar principal</span>
                     )}
                   </div>
 
-                  <div>
-                    <label>Sexo</label>
-                    <select value={a.sex} onChange={(e) => update(i, { sex: e.target.value })}>
-                      <option value="M">Masculino</option>
-                      <option value="F">Femenino</option>
-                    </select>
-                  </div>
-                </div>
+                  <div className="formGrid" style={{ marginTop: 10 }}>
+                    <div>
+                      <label>Nombre</label>
+                      <input value={a.firstName} required onChange={(e) => update(i, { firstName: e.target.value })} />
+                    </div>
 
-                {/* ✅ AUTORIZACIÓN 15-18 */}
-                {req ? (
-                  <div className="card" style={{ marginTop: 12, borderStyle: "dashed" }}>
-                    <h4 style={{ margin: 0 }}>Autorización de padres / tutores (obligatoria)</h4>
-                    <p style={{ marginTop: 6, opacity: 0.85 }}>
-                      Este integrante tiene <b>{ageNum}</b> años. Debe presentar autorización firmada.
-                    </p>
+                    <div>
+                      <label>Apellido</label>
+                      <input value={a.lastName} required onChange={(e) => update(i, { lastName: e.target.value })} />
+                    </div>
 
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <a className="btn secondary" href="/autorizacion-menores.pdf" target="_blank" rel="noreferrer">
-                        Descargar autorización
-                      </a>
+                    <div>
+                      <label>DNI</label>
+                      <input
+                        value={a.dni}
+                        required
+                        inputMode="numeric"
+                        placeholder="Sin puntos"
+                        onChange={(e) => update(i, { dni: e.target.value })}
+                      />
+                    </div>
 
-                      <label className="btn" style={{ cursor: "pointer" }}>
-                        {uploading[i] ? "Subiendo..." : a.consentUrl ? "Re-subir autorización" : "Subir autorización firmada"}
-                        <input
-                          type="file"
-                          accept="application/pdf,image/*"
-                          style={{ display: "none" }}
-                          disabled={!!uploading[i]}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) uploadConsent(i, f);
-                          }}
-                        />
-                      </label>
+                    <div>
+                      <label>Edad</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Ej: 12"
+                        value={a.age ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/[^\d]/g, "");
+                          update(i, { age: v });
+                        }}
+                        required
+                      />
+                      <div className="fieldHint">Menores de 4 años no abonan.</div>
+                    </div>
 
-                      {a.consentUrl ? (
-                        <a className="btn secondary" href={a.consentUrl} target="_blank" rel="noreferrer">
-                          Ver archivo subido
-                        </a>
+                    <div>
+                      <label>Relación con el principal</label>
+                      {a.isPrimary ? (
+                        <input value="Principal" disabled />
                       ) : (
-                        <span style={{ fontWeight: 800, color: "#b91c1c" }}>
-                          Falta subir el archivo
-                        </span>
+                        <select value={a.relation} onChange={(e) => update(i, { relation: e.target.value })}>
+                          {REL_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
                       )}
                     </div>
 
-                    {uploadErr[i] ? (
-                      <div className="alert" style={{ marginTop: 10 }}>
-                        {uploadErr[i]}
-                      </div>
-                    ) : null}
-
-                    <small style={{ display: "block", marginTop: 10 }}>
-                      Formatos aceptados: PDF o imagen. Máx 10MB.
-                    </small>
+                    <div>
+                      <label>Sexo</label>
+                      <select value={a.sex} onChange={(e) => update(i, { sex: e.target.value })}>
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                      </select>
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
+
+                  {/* ✅ AUTORIZACIÓN 15-17 SOLO si NO hay principal adulto */}
+                  {req ? (
+                    <div className="card" style={{ marginTop: 12, borderStyle: "dashed" }}>
+                      <h4 style={{ margin: 0 }}>Autorización de padres / tutores (obligatoria)</h4>
+                      <p style={{ marginTop: 6, opacity: 0.85 }}>
+                        Este integrante tiene <b>{ageNum}</b> años. Como no hay un principal mayor de 18, debe presentar autorización firmada.
+                      </p>
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <a className="btn secondary" href="/autorizacion-menores.pdf" target="_blank" rel="noreferrer">
+                          Descargar autorización
+                        </a>
+
+                        <label className="btn" style={{ cursor: "pointer" }}>
+                          {uploading[i] ? "Subiendo..." : a.consentUrl ? "Re-subir autorización" : "Subir autorización firmada"}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/*"
+                            style={{ display: "none" }}
+                            disabled={!!uploading[i]}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) uploadConsent(i, f);
+                            }}
+                          />
+                        </label>
+
+                        {a.consentUrl ? (
+                          <>
+                            <a className="btn secondary" href={a.consentUrl} target="_blank" rel="noreferrer">
+                              Ver archivo subido
+                            </a>
+                            {a.consentCode ? (
+                              <span className="badgePill">Código: {a.consentCode}</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span style={{ fontWeight: 800, color: "#b91c1c" }}>
+                            Falta subir el archivo
+                          </span>
+                        )}
+                      </div>
+
+                      {uploadErr[i] ? (
+                        <div className="alert" style={{ marginTop: 10 }}>
+                          {uploadErr[i]}
+                        </div>
+                      ) : null}
+
+                      <small style={{ display: "block", marginTop: 10 }}>
+                        Formatos aceptados: PDF o imagen. Máx 10MB.
+                      </small>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            });
+          })()}
 
           <div className="stickyBar" style={{ marginTop: 14 }}>
             <button type="button" className="btn secondary" onClick={back}>

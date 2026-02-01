@@ -1,107 +1,101 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import fs from "fs";
-import { IncomingForm } from "formidable";
-import { put } from "@vercel/blob";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
+import formidable from "formidable";
+import fs from "fs";
+import { put } from "@vercel/blob";
 
 export const config = {
   api: { bodyParser: false }
 };
 
-// helpers tipados (sin any implícito)
-type FormFields = Record<string, any>;
-type FormFile = {
-  filepath: string;
-  originalFilename?: string | null;
-  mimetype?: string | null;
-  size?: number;
-};
-type FormFiles = Record<string, FormFile | FormFile[]>;
-
-function parseForm(req: NextApiRequest): Promise<{ fields: FormFields; files: FormFiles }> {
-  const form = new IncomingForm({
+function parseForm(req: NextApiRequest): Promise<{ fields: any; files: any }> {
+  const form = formidable({
     multiples: false,
-    maxFileSize: 10 * 1024 * 1024 // 10MB
+    maxFileSize: 10 * 1024 * 1024
   });
 
   return new Promise((resolve, reject) => {
-    form.parse(req, (err: unknown, fields: FormFields, files: FormFiles) => {
-      if (err) return reject(err);
-      resolve({ fields, files });
+    form.parse(req as any, (err: any, fields: any, files: any) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
     });
   });
 }
 
-function pickFirstFile(x: FormFile | FormFile[] | undefined): FormFile | null {
-  if (!x) return null;
-  return Array.isArray(x) ? (x[0] || null) : x;
+function extFrom(file: any) {
+  const name = String(file?.originalFilename || "");
+  const byName = name.includes(".") ? name.split(".").pop() : "";
+  if (byName) return byName.toLowerCase();
+
+  const mt = String(file?.mimetype || "");
+  if (mt.includes("pdf")) return "pdf";
+  if (mt.includes("png")) return "png";
+  if (mt.includes("jpeg") || mt.includes("jpg")) return "jpg";
+  return "bin";
+}
+
+function makeCode() {
+  const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const ts = Date.now().toString(36).toUpperCase();
+  return `CONSENT-${ts}-${rnd}`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!token) return res.status(500).json({ error: "Missing BLOB_READ_WRITE_TOKEN" });
-
     const { fields, files } = await parseForm(req);
 
     const registrationId = String(fields.registrationId || "").trim();
     const attendeeId = String(fields.attendeeId || "").trim();
-
     if (!registrationId || !attendeeId) {
-      return res.status(400).json({ error: "Faltan fields: registrationId y attendeeId" });
+      return res.status(400).json({ error: "Missing registrationId/attendeeId" });
     }
 
-    const f = pickFirstFile(files.file as any);
-    if (!f) return res.status(400).json({ error: "Falta archivo (file)" });
+    const file: any = files?.file;
+    if (!file) return res.status(400).json({ error: "Falta archivo (file)" });
 
-    // Validar tipo (aceptamos PDF o imagen)
-    const mimetype = String(f.mimetype || "");
-    const allowed =
-      mimetype === "application/pdf" ||
-      mimetype.startsWith("image/");
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) return res.status(500).json({ error: "Missing BLOB_READ_WRITE_TOKEN" });
 
-    if (!allowed) {
-      return res.status(400).json({ error: "Formato inválido. Subí PDF o imagen (JPG/PNG)." });
-    }
+    const buffer = await fs.promises.readFile(file.filepath);
+    const ext = extFrom(file);
+    const code = makeCode();
 
-    const original = String(f.originalFilename || "consent.pdf");
-    const safe = original.replace(/[^a-zA-Z0-9._-]/g, "_");
+    // ✅ nombre/código como filename
+    const pathname = `consents/${registrationId}/${code}.${ext}`;
 
-    const buffer = await fs.promises.readFile(f.filepath);
-
-    // Subida a Vercel Blob
-    const pathname = `consents/${registrationId}/${attendeeId}-${Date.now()}-${safe}`;
     const blob = await put(pathname, buffer, {
       access: "public",
       token,
-      contentType: mimetype || undefined
+      contentType: file.mimetype || undefined
     });
 
-    // Guardar URL en el attendee
     await connectDB();
 
-    const reg = await Registration.findOne({ _id: registrationId }).lean();
-    if (!reg) return res.status(404).json({ error: "Inscripción no encontrada" });
-
-    // actualiza SOLO ese integrante
-    const result = await Registration.updateOne(
+    // ✅ actualiza dentro del attendee correspondiente
+    const upd = await Registration.updateOne(
       { _id: registrationId, "attendees._id": attendeeId },
       {
         $set: {
           "attendees.$.consentRequired": true,
-          "attendees.$.consentUrl": blob.url
+          "attendees.$.consentUrl": blob.url,
+          "attendees.$.consentCode": code
         }
       }
     );
 
-    if (!result.modifiedCount) {
-      return res.status(400).json({ error: "No se pudo asociar el archivo al integrante (attendeeId inválido?)" });
+    if (!upd.matchedCount) {
+      return res.status(404).json({ error: "No se encontró inscripción o integrante" });
     }
 
-    return res.status(200).json({ ok: true, url: blob.url });
+    return res.status(200).json({
+      ok: true,
+      url: blob.url,
+      code,
+      pathname
+    });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || "Upload error" });
   }

@@ -21,7 +21,7 @@ const AttendeeSchema = new Schema(
     isPrimary: { type: Boolean, default: false },
     lodging: { type: LodgingSchema, default: {} },
     consentRequired: { type: Boolean, default: false },
-consentUrl: { type: String, default: "" },
+    consentUrl: { type: String, default: "" },
 
   },
   { _id: true }
