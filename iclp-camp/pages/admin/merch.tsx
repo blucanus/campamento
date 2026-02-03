@@ -130,13 +130,16 @@ export default function AdminMerch() {
                     </Badge>
                   </td>
                   <td>
-                    <button
-                      className="btn secondary"
-                      type="button"
-                      onClick={() => toggleDelivered(o._id, !o.delivered)}
-                    >
-                      {o.delivered ? "Marcar NO entregado" : "Marcar entregado"}
-                    </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <a className="btn secondary" href={`/admin/merch/${o._id}`}>Ver</a>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => toggleDelivered(o._id, !o.delivered)}
+                      >
+                        {o.delivered ? "Marcar NO entregado" : "Marcar entregado"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

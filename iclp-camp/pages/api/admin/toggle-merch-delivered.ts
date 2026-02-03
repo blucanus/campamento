@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const next = !!delivered;
   order.delivered = next;
   order.deliveredAt = next ? new Date() : null;
-  order.deliveredBy = next ? (admin?.email || admin?.user || admin?.id || "admin") : "";
+  order.deliveredBy = next ? (admin?.email || admin?.id || "admin") : "";
   await order.save();
 
   return res.status(200).json({
