@@ -78,6 +78,38 @@ export default function Registro() {
     return reg.primary?.email || reg.step1?.email || "-";
   }, [reg]);
 
+  const attendanceLabel = useMemo(() => {
+    if (!reg) return "Sin datos";
+
+    const optionDays = String(reg.step1?.optionDays || "");
+    const daysDetail = String(
+      reg.step1?.daysDetail || reg.step1?.oneDay || reg.step1?.twoDays || ""
+    );
+
+    const oneDayMap: Record<string, string> = {
+      viernes: "Viernes",
+      sabado: "Sábado",
+      domingo: "Domingo"
+    };
+
+    const twoDaysMap: Record<string, string> = {
+      "viernes-sabado": "Viernes + Sábado",
+      "sabado-domingo": "Sábado + Domingo"
+    };
+
+    if (optionDays === "full") return "Todo el campa";
+    if (optionDays === "1") {
+      const dayLabel = oneDayMap[daysDetail];
+      return dayLabel ? `1 día (${dayLabel})` : "1 día";
+    }
+    if (optionDays === "2") {
+      const comboLabel = twoDaysMap[daysDetail];
+      return comboLabel ? `2 días (${comboLabel})` : "2 días";
+    }
+
+    return "Sin datos";
+  }, [reg]);
+
   const hasExtras = Array.isArray(reg?.extras) && reg.extras.length > 0;
 
   async function toggleDelivered() {
@@ -169,6 +201,9 @@ export default function Registro() {
               <Badge tone={paymentStatusTone(reg.payment?.status)}>
                 {paymentStatusLabel(reg.payment?.status)}
               </Badge>
+
+              <span><b>Asistencia:</b></span>
+              <Badge tone="muted">{attendanceLabel}</Badge>
 
               {hasExtras ? (
                 reg.extrasDelivered ? (
