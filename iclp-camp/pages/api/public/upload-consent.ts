@@ -53,13 +53,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Missing registrationId/attendeeId" });
     }
 
-    const file: any = files?.file;
+    let file: any = files?.file;
+    if (Array.isArray(file)) file = file[0];
     if (!file) return res.status(400).json({ error: "Falta archivo (file)" });
 
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) return res.status(500).json({ error: "Missing BLOB_READ_WRITE_TOKEN" });
 
-    const buffer = await fs.promises.readFile(file.filepath);
+    const filepath = file?.filepath || file?._writeStream?.path || file?.path;
+    if (!filepath) return res.status(400).json({ error: "Archivo inválido (sin ruta)" });
+
+    const buffer = await fs.promises.readFile(filepath);
     const ext = extFrom(file);
     const code = makeCode();
 
