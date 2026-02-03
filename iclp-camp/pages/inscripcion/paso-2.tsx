@@ -121,7 +121,30 @@ export default function Paso2() {
   // ✅ crea draft si no existe regId, para tener attendeeId y poder subir archivos sin loop
   async function ensureDraft(): Promise<boolean> {
     const existing = localStorage.getItem("regId") || "";
-    if (existing) return true;
+    if (existing) {
+      try {
+        const r = await fetch("/api/public/get-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regId: existing })
+        });
+
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "No se pudo refrescar el borrador");
+
+        const updated = attendees.map((p, idx) => ({
+          ...p,
+          _id: j.attendees?.[idx]?._id || p._id
+        }));
+        setAttendees(updated);
+        localStorage.setItem("step2", JSON.stringify(updated));
+
+        return true;
+      } catch (e: any) {
+        alert(e?.message || "Error refrescando borrador");
+        return false;
+      }
+    }
     if (!step1) return false;
 
     // Normalizamos edades
