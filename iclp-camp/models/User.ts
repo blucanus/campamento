@@ -1,11 +1,21 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, models, model } from "mongoose";
 
-const UserSchema = new Schema({
-  name: String,
-  email: { type: String, unique: true },
-  passwordHash: String,
-  role: { type: String, enum: ["admin", "staff"], default: "admin" }
-}, { timestamps: true });
+export type UserRole = "superadmin" | "admin";
+
+const UserSchema = new Schema(
+  {
+    email: { type: String, required: true, unique: true, index: true },
+    name: { type: String, default: "" },
+    role: { type: String, enum: ["superadmin", "admin"], default: "admin", index: true },
+    passwordHash: { type: String, required: true },
+
+    isActive: { type: Boolean, default: true, index: true },
+    lastLoginAt: { type: Date, default: null },
+  },
+  {
+    minimize: false,
+    timestamps: true, // ✅ crea createdAt y updatedAt automáticamente
+  }
+);
 
 export const User = models.User || model("User", UserSchema);
-

@@ -5,8 +5,13 @@ const AdminUserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     name: { type: String, default: "" },
-    role: { type: String, default: "admin" }, // admin | viewer etc
-    isActive: { type: Boolean, default: true },
+    role: {
+      type: String,
+      enum: ["superadmin", "admin", "viewer"],
+      default: "admin",
+      index: true,
+    },
+    isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }
 );
