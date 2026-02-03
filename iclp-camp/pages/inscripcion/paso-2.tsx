@@ -171,7 +171,8 @@ export default function Paso2() {
       const regId = localStorage.getItem("regId") || "";
       if (!regId) throw new Error("No se pudo generar regId.");
 
-      const att = attendees[i];
+      const latest = JSON.parse(localStorage.getItem("step2") || "[]");
+      const att = Array.isArray(latest) ? latest[i] : attendees[i];
       const attId = att?._id;
       if (!attId) throw new Error("No se pudo obtener el ID del integrante. Reintentá.");
 
