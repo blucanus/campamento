@@ -24,6 +24,7 @@ function AdminTabsMini() {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <Item href="/admin" label="Inscripciones" />
+      <Item href="/admin/merch" label="Merch" />
       <Item href="/admin/reportes" label="Reportes" />
     </div>
   );

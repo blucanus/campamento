@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { createPreference } from "@/lib/mercadopago";
 import { Product } from "@/models/Product";
 import { ProductVariant } from "@/models/ProductVariant";
+import { MerchOrder } from "@/models/MerchOrder";
 
 type CartItem = { variantId: string; qty: number };
 
@@ -11,9 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).end();
 
   try {
-    const { cart, payer_email } = req.body || {};
+    const { cart, payer_email, payer_firstName, payer_lastName } = req.body || {};
     const payerEmail = String(payer_email || "").trim().toLowerCase();
     if (!payerEmail) return res.status(400).json({ error: "Email requerido" });
+    const firstName = String(payer_firstName || "").trim();
+    const lastName = String(payer_lastName || "").trim();
+    if (!firstName || !lastName) return res.status(400).json({ error: "Nombre y apellido requeridos" });
 
     const cartItems: CartItem[] = Array.isArray(cart) ? cart : [];
     const clean = cartItems
@@ -32,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prodById = new Map(products.map((p: any) => [String(p._id), p]));
 
     let totalARS = 0;
+    const items: any[] = [];
 
     for (const item of clean) {
       const v: any = await ProductVariant.findById(item.variantId).lean();
@@ -47,18 +52,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!Number.isFinite(unit) || unit < 0) return res.status(400).json({ error: `Precio inválido (${v.sku})` });
 
       totalARS += unit * item.qty;
+
+      items.push({
+        variantId: String(v._id),
+        sku: v.sku,
+        name: p?.name || "Producto",
+        attributes: v.attributes,
+        qty: item.qty,
+        unitPrice: unit
+      });
     }
 
     if (!Number.isFinite(totalARS) || totalARS <= 0) {
       return res.status(400).json({ error: "Total inválido" });
     }
 
+    const order = await MerchOrder.create({
+      buyer: { firstName, lastName, email: payerEmail },
+      items,
+      totalARS,
+      delivered: false,
+      payment: { status: "pending" }
+    });
+
+    const externalReference = `merch-${String(order._id)}`;
+
     const pref = await createPreference({
       title: "Merch Campamento ICLP",
       quantity: 1,
       unit_price: totalARS,
 
-      external_reference: `merch-${Date.now()}`,
+      external_reference: externalReference,
       payer_email: payerEmail,
       notification_url: env.MP_NOTIFICATION_URL,
       back_urls: {
@@ -73,6 +97,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       env.MP_ACCESS_TOKEN.startsWith("TEST-")
         ? (pref.sandbox_init_point || pref.init_point)
         : pref.init_point;
+
+    order.externalReference = externalReference;
+    order.payment.preferenceId = pref.id;
+    order.payment.initPoint = initPoint;
+    await order.save();
 
     return res.status(200).json({ ok: true, init_point: initPoint, totalARS });
   } catch (e: any) {

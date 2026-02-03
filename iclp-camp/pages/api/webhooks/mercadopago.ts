@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
+import { MerchOrder } from "@/models/MerchOrder";
 import { env } from "@/lib/env";
 import { sendConfirmationEmail } from "@/lib/notify";
 import { mailApproved } from "@/lib/templates";
@@ -30,13 +31,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const payment = await fetchPayment(id);
     if (!payment) return res.status(200).json({ ok: true });
 
-    const regId = String(payment.external_reference || "");
-    if (!regId) return res.status(200).json({ ok: true });
+    const ref = String(payment.external_reference || "");
+    if (!ref) return res.status(200).json({ ok: true });
 
+    const newStatus = String(payment.status || "pending"); // approved / pending / rejected / in_process
+
+    if (ref.startsWith("merch-")) {
+      const orderId = ref.replace("merch-", "");
+      const order: any = await MerchOrder.findById(orderId);
+      if (!order) return res.status(200).json({ ok: true });
+
+      const prevStatus = order.payment?.status;
+      order.payment = order.payment || {};
+      order.payment.status = newStatus;
+      order.payment.paymentId = String(payment.id || "");
+      order.payment.lastEventAt = new Date();
+      await order.save();
+
+      if (newStatus === "approved" && prevStatus !== "approved") {
+        const items = Array.isArray(order.items) ? order.items : [];
+        for (const x of items) {
+          const variantId = x?.variantId;
+          const qty = Number(x?.qty || 0);
+          if (!variantId || qty <= 0) continue;
+
+          try {
+            await ProductVariant.updateOne(
+              { _id: variantId, stock: { $gte: qty } },
+              { $inc: { stock: -qty } }
+            );
+          } catch {
+            // noop
+          }
+        }
+      }
+
+      return res.status(200).json({ ok: true, topic });
+    }
+
+    const regId = ref;
     const reg: any = await Registration.findById(regId);
     if (!reg) return res.status(200).json({ ok: true });
 
-    const newStatus = String(payment.status || "pending"); // approved / pending / rejected / in_process
     const prevStatus = reg.payment?.status;
 
     // Actualizar estado de pago

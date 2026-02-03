@@ -40,6 +40,8 @@ export default function MerchPage() {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [payerEmail, setPayerEmail] = useState("");
+  const [payerFirstName, setPayerFirstName] = useState("");
+  const [payerLastName, setPayerLastName] = useState("");
   const [loading, setLoading] = useState(false);
 
   // modal imagen
@@ -159,6 +161,7 @@ export default function MerchPage() {
   async function pay() {
     const email = payerEmail.trim().toLowerCase();
     if (!email) return alert("Ingresá un email para el pagador");
+    if (!payerFirstName.trim() || !payerLastName.trim()) return alert("Ingresá nombre y apellido");
     if (cartArr.length === 0) return alert("Carrito vacío");
 
     setLoading(true);
@@ -166,7 +169,12 @@ export default function MerchPage() {
       const r = await fetch("/api/public/checkout-merch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cart: cartArr, payer_email: email }),
+        body: JSON.stringify({
+          cart: cartArr,
+          payer_email: email,
+          payer_firstName: payerFirstName.trim(),
+          payer_lastName: payerLastName.trim()
+        }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -202,7 +210,19 @@ export default function MerchPage() {
 
         {/* Email */}
         <div className="card" style={{ marginTop: 12 }}>
-          <label>
+          <div className="grid2">
+            <label>
+              Nombre
+              <input value={payerFirstName} onChange={(e) => setPayerFirstName(e.target.value)} placeholder="Nombre" />
+            </label>
+
+            <label>
+              Apellido
+              <input value={payerLastName} onChange={(e) => setPayerLastName(e.target.value)} placeholder="Apellido" />
+            </label>
+          </div>
+
+          <label style={{ marginTop: 10, display: "block" }}>
             Email del pagador
             <input value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} placeholder="email@..." />
           </label>
