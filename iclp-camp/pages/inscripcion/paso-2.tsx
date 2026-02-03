@@ -166,14 +166,12 @@ export default function Paso2() {
       localStorage.setItem("regId", j.regId);
 
       // Matcheo por índice (el draft se crea con el mismo orden)
-      setAttendees((prev) => {
-        const next = prev.map((p, idx) => ({
-          ...p,
-          _id: j.attendees?.[idx]?._id || p._id
-        }));
-        localStorage.setItem("step2", JSON.stringify(next));
-        return next;
-      });
+      const next = attendees.map((p, idx) => ({
+        ...p,
+        _id: j.attendees?.[idx]?._id || p._id
+      }));
+      setAttendees(next);
+      localStorage.setItem("step2", JSON.stringify(next));
 
       return true;
     } catch (e: any) {
@@ -194,9 +192,31 @@ export default function Paso2() {
       const regId = localStorage.getItem("regId") || "";
       if (!regId) throw new Error("No se pudo generar regId.");
 
-      const latest = JSON.parse(localStorage.getItem("step2") || "[]");
-      const att = Array.isArray(latest) ? latest[i] : attendees[i];
-      const attId = att?._id;
+      let latest = JSON.parse(localStorage.getItem("step2") || "[]");
+      let att = Array.isArray(latest) ? latest[i] : attendees[i];
+      let attId = att?._id;
+
+      if (!attId) {
+        const r2 = await fetch("/api/public/get-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regId })
+        });
+        const j2 = await r2.json().catch(() => ({}));
+        if (!r2.ok) throw new Error(j2.error || "No se pudo refrescar el borrador");
+
+        const updated = attendees.map((p, idx) => ({
+          ...p,
+          _id: j2.attendees?.[idx]?._id || p._id
+        }));
+        setAttendees(updated);
+        localStorage.setItem("step2", JSON.stringify(updated));
+
+        latest = updated;
+        att = Array.isArray(latest) ? latest[i] : attendees[i];
+        attId = att?._id;
+      }
+
       if (!attId) throw new Error("No se pudo obtener el ID del integrante. Reintentá.");
 
       const fd = new FormData();
