@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+﻿import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { env } from "@/lib/env";
 import { computeTotalARS } from "@/lib/pricing";
@@ -8,6 +8,17 @@ import { ProductVariant } from "@/models/ProductVariant";
 import { Registration } from "@/models/Registration";
 
 type CartItem = { variantId: string; qty: number };
+
+function sanitizeAttendees(attendees: any[]) {
+  return (attendees || []).map((a: any) => {
+    const out = { ...a };
+    const id = String(out?._id || "").trim();
+    if (!id || !/^[a-fA-F0-9]{24}$/.test(id)) {
+      delete (out as any)._id;
+    }
+    return out;
+  });
+}
 
 function normalizePrimary(step1: any) {
   const first = String(step1?.primaryFirstName || step1?.firstName || "").trim();
@@ -42,6 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectDB();
 
+  const safeAttendees = sanitizeAttendees(attendees);
+
   // Buscar o crear inscripción
   let doc: any = null;
 
@@ -53,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     doc = await Registration.create({
       step1,
       primary, // ✅ guardar primary al crear
-      attendees,
+      attendees: safeAttendees,
       extras: [],
       payment: { status: "pending" }
     });
@@ -61,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // actualizar datos si volvieron a intentar
     doc.step1 = step1;
     doc.primary = primary; // ✅ normalizado
-    doc.attendees = attendees;
+    doc.attendees = safeAttendees;
   }
 
   if (doc.payment?.status === "approved") {
@@ -76,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // ✅ pricing base con descuento por 5to+
-  const base = computeTotalARS(step1, attendees);
+  const base = computeTotalARS(step1, safeAttendees);
   const campTotal = Number((base as any).campTotal ?? (base as any).total ?? 0);
 
   // extras
@@ -163,3 +176,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({ regId: String(doc._id), init_point: initPoint });
 }
+
+
