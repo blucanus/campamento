@@ -35,6 +35,7 @@ export default function Registro() {
   const id = String(query.id || "");
   const [reg, setReg] = useState<any>(null);
   const [savingDelivery, setSavingDelivery] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const toast = useToast();
 
   async function load() {
@@ -172,9 +173,48 @@ export default function Registro() {
     }
   }
 
+  async function refreshPaymentStatus() {
+    if (!reg?._id) return;
+
+    setCheckingPayment(true);
+    try {
+      const r = await fetch("/api/admin/refresh-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "registration", id: reg._id })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "No se pudo comprobar estado");
+
+      setReg((prev: any) => ({
+        ...prev,
+        payment: {
+          ...(prev?.payment || {}),
+          status: j.status || prev?.payment?.status,
+          paymentId: j.paymentId || prev?.payment?.paymentId,
+          lastEventAt: j.lastEventAt || prev?.payment?.lastEventAt
+        }
+      }));
+
+      toast.show(
+        j.changed ? "Estado de pago actualizado" : "Sin cambios en el estado de pago",
+        "success"
+      );
+    } catch {
+      toast.show("No se pudo comprobar estado de pago", "danger");
+    } finally {
+      setCheckingPayment(false);
+    }
+  }
+
   const showCopyPay =
     !!reg?.payment?.initPoint &&
     String(reg?.payment?.status || "").toLowerCase() !== "approved";
+
+  const startedAtLabel = reg?.createdAt
+    ? new Date(reg.createdAt).toLocaleString("es-AR")
+    : "-";
+  const mpOperationNumber = String(reg?.payment?.paymentId || "").trim() || "-";
 
   if (!reg) {
     return (
@@ -194,6 +234,9 @@ export default function Registro() {
             <h2 style={{ marginBottom: 6 }}>{primaryName}</h2>
             <div style={{ opacity: 0.85, marginBottom: 10 }}>
               <b>Tel:</b> {phone} &nbsp;|&nbsp; <b>Email:</b> {email}
+            </div>
+            <div style={{ opacity: 0.85, marginBottom: 10 }}>
+              <b>Inicio inscripcion:</b> {startedAtLabel} &nbsp;|&nbsp; <b>Nro operacion MP:</b> {mpOperationNumber}
             </div>
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -222,6 +265,15 @@ export default function Registro() {
 
             <button className="btn secondary" type="button" onClick={() => back()}>
               ← Volver
+            </button>
+
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={refreshPaymentStatus}
+              disabled={checkingPayment}
+            >
+              {checkingPayment ? "Comprobando..." : "Comprobar estado"}
             </button>
 
             {showCopyPay ? (
@@ -365,4 +417,5 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
     </tr>
   );
 }
+
 

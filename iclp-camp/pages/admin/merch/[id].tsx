@@ -34,6 +34,7 @@ export default function AdminMerchDetail() {
   const id = String(query.id || "");
   const [order, setOrder] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   async function load() {
     const r = await fetch("/api/admin/merch-order?id=" + id);
@@ -87,6 +88,41 @@ export default function AdminMerchDetail() {
     }
   }
 
+  async function refreshPaymentStatus() {
+    if (!order?._id) return;
+
+    setCheckingPayment(true);
+    try {
+      const r = await fetch("/api/admin/refresh-payment-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "merch", id: order._id })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "No se pudo comprobar estado");
+
+      setOrder((prev: any) => ({
+        ...prev,
+        payment: {
+          ...(prev?.payment || {}),
+          status: j.status || prev?.payment?.status,
+          paymentId: j.paymentId || prev?.payment?.paymentId,
+          lastEventAt: j.lastEventAt || prev?.payment?.lastEventAt
+        }
+      }));
+
+      if (j.changed) {
+        alert("Estado de pago actualizado");
+      } else {
+        alert("Sin cambios en el estado de pago");
+      }
+    } catch {
+      alert("No se pudo comprobar estado de pago");
+    } finally {
+      setCheckingPayment(false);
+    }
+  }
+
   if (!order) {
     return (
       <Layout title="Detalle compra merch">
@@ -127,6 +163,15 @@ export default function AdminMerchDetail() {
 
             <button className="btn secondary" type="button" onClick={() => back()}>
               ← Volver
+            </button>
+
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={refreshPaymentStatus}
+              disabled={checkingPayment}
+            >
+              {checkingPayment ? "Comprobando..." : "Comprobar estado"}
             </button>
 
             <button className="btn" type="button" onClick={toggleDelivered} disabled={saving}>
@@ -187,3 +232,4 @@ export default function AdminMerchDetail() {
     </Layout>
   );
 }
+
