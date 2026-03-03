@@ -184,7 +184,10 @@ export default function Registro() {
         body: JSON.stringify({ kind: "registration", id: reg._id })
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || "No se pudo comprobar estado");
+      if (!r.ok) {
+        const msg = j?.details || j?.error || "No se pudo comprobar estado";
+        throw new Error(String(msg));
+      }
 
       setReg((prev: any) => ({
         ...prev,
@@ -200,8 +203,8 @@ export default function Registro() {
         j.changed ? "Estado de pago actualizado" : "Sin cambios en el estado de pago",
         "success"
       );
-    } catch {
-      toast.show("No se pudo comprobar estado de pago", "danger");
+    } catch (e: any) {
+      toast.show(e?.message || "No se pudo comprobar estado de pago", "danger");
     } finally {
       setCheckingPayment(false);
     }
@@ -417,5 +420,4 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
     </tr>
   );
 }
-
 

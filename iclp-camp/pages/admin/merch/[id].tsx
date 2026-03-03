@@ -99,7 +99,10 @@ export default function AdminMerchDetail() {
         body: JSON.stringify({ kind: "merch", id: order._id })
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || "No se pudo comprobar estado");
+      if (!r.ok) {
+        const msg = j?.details || j?.error || "No se pudo comprobar estado";
+        throw new Error(String(msg));
+      }
 
       setOrder((prev: any) => ({
         ...prev,
@@ -116,8 +119,8 @@ export default function AdminMerchDetail() {
       } else {
         alert("Sin cambios en el estado de pago");
       }
-    } catch {
-      alert("No se pudo comprobar estado de pago");
+    } catch (e: any) {
+      alert(e?.message || "No se pudo comprobar estado de pago");
     } finally {
       setCheckingPayment(false);
     }
