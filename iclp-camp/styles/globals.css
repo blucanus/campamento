@@ -621,6 +621,10 @@ small{ color:var(--muted); }
   flex-wrap:wrap;
 }
 
+.check-pass-ticket.is-exporting-pdf .check-pass-actions{
+  display:none !important;
+}
+
 @media (max-width: 780px){
   .check-pass-search{
     grid-template-columns:1fr;
