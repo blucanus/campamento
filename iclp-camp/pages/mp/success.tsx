@@ -8,6 +8,7 @@ export default function MPSuccess() {
     localStorage.removeItem("regId");
     localStorage.removeItem("step1");
     localStorage.removeItem("step2");
+    localStorage.removeItem("registrationAccessCode");
   }, []);
 
   return (

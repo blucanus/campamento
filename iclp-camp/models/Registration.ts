@@ -89,6 +89,12 @@ const RegistrationSchema = new Schema(
       paymentId: String,
       initPoint: String,
       lastEventAt: Date
+    },
+
+    // Codigo de acceso unico usado cuando la inscripcion general esta cerrada
+    accessCodeUsed: {
+      type: String,
+      default: ""
     }
   },
   {

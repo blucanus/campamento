@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
 type OptionDays = "full" | "1" | "2";
@@ -12,6 +12,10 @@ function clamp(n: number, min: number, max: number) {
 
 export default function Paso1() {
   const router = useRouter();
+  const [gateLoading, setGateLoading] = useState(true);
+  const [gateMsg, setGateMsg] = useState("");
+  const [manualCode, setManualCode] = useState("");
+  const [specialAccess, setSpecialAccess] = useState(false);
   const [form, setForm] = useState({
     count: 1,
     optionDays: "full" as OptionDays,
@@ -28,6 +32,54 @@ export default function Paso1() {
     if (saved) setForm(JSON.parse(saved));
   }, []);
 
+  async function checkGate(codeInput?: string) {
+    const raw = String(codeInput || "").trim();
+    const code = raw.toUpperCase().replace(/\s+/g, "");
+    const qs = code ? `?code=${encodeURIComponent(code)}` : "";
+
+    setGateLoading(true);
+    try {
+      const r = await fetch(`/api/public/registration-access-status${qs}`);
+      const j = await r.json().catch(() => ({}));
+
+      if (j.allowed) {
+        setGateMsg("");
+        setSpecialAccess(!j.registrationsOpen);
+        if (code) {
+          localStorage.setItem("registrationAccessCode", code);
+          setManualCode(code);
+        }
+      } else {
+        setSpecialAccess(false);
+        setGateMsg(String(j.message || "Inscripciones cerradas."));
+      }
+    } catch {
+      setSpecialAccess(false);
+      setGateMsg("No se pudo verificar el estado de inscripciones.");
+    } finally {
+      setGateLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const urlCode =
+      typeof router.query.code === "string" ? router.query.code : "";
+    const savedCode = localStorage.getItem("registrationAccessCode") || "";
+    const code = (urlCode || savedCode).trim();
+
+    if (urlCode) {
+      localStorage.setItem(
+        "registrationAccessCode",
+        urlCode.toUpperCase().replace(/\s+/g, "")
+      );
+    }
+
+    setManualCode(code.toUpperCase().replace(/\s+/g, ""));
+    checkGate(code);
+  }, [router.isReady, router.query.code]);
+
   const daysDetail = useMemo(() => {
     return form.optionDays === "full"
       ? ""
@@ -40,11 +92,54 @@ export default function Paso1() {
     setForm((p) => ({ ...p, count: clamp(next, 1, 20) })); // límite 20 (ajustalo si querés)
   }
 
-  function submit(e: any) {
+  function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const payload = { ...form, daysDetail };
     localStorage.setItem("step1", JSON.stringify(payload));
     router.push("/inscripcion/paso-2");
+  }
+
+  if (gateLoading) {
+    return (
+      <Layout title="Inscripción – Paso 1">
+        <div className="card">Verificando estado de inscripciones...</div>
+      </Layout>
+    );
+  }
+
+  if (gateMsg) {
+    return (
+      <Layout title="Inscripción – Paso 1">
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Inscripciones cerradas</h2>
+          <div className="alert" style={{ marginTop: 10 }}>
+            {gateMsg}
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label>Codigo de acceso especial</label>
+            <input
+              placeholder="Ej: ICLP-ABC123-XYZ789"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+            />
+          </div>
+
+          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn" type="button" onClick={() => checkGate(manualCode)}>
+              Validar codigo
+            </button>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => router.push("/")}
+            >
+              Volver al inicio
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   return (
@@ -64,6 +159,19 @@ export default function Paso1() {
         </div>
 
         <div className="card cardTight">
+          {specialAccess ? (
+            <div
+              className="badgePill"
+              style={{
+                marginBottom: 10,
+                background: "rgba(34,197,94,0.12)",
+                borderColor: "rgba(34,197,94,0.35)"
+              }}
+            >
+              Acceso especial habilitado por codigo unico
+            </div>
+          ) : null}
+
           <form onSubmit={submit}>
             <div className="formGrid">
               <div>

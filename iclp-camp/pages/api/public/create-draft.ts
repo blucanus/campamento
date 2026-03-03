@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
+import {
+  checkRegistrationAccess,
+  consumeRegistrationAccessCode
+} from "@/lib/registrationAccess";
 
 function normalizePrimary(step1: any) {
   const first = String(step1?.primaryFirstName || step1?.firstName || "").trim();
@@ -38,12 +42,17 @@ function sanitizeAttendees(attendees: any[]) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { step1, attendees } = req.body || {};
+  const { step1, attendees, accessCode } = req.body || {};
   if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
   const primary = normalizePrimary(step1);
 
   await connectDB();
+
+  const access = await checkRegistrationAccess({ code: accessCode });
+  if (!access.allowed) {
+    return res.status(403).json({ error: access.reason || "Inscripciones cerradas." });
+  }
 
   const safeAttendees = sanitizeAttendees(attendees);
 
@@ -54,6 +63,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     extras: [],
     payment: { status: "pending" }
   });
+
+  if (!access.registrationsOpen && access.source === "invite_code") {
+    const consumed = await consumeRegistrationAccessCode(access.code);
+    if (!consumed) {
+      await Registration.deleteOne({ _id: doc._id });
+      return res.status(403).json({ error: "Este codigo ya no esta disponible." });
+    }
+    doc.accessCodeUsed = access.code;
+    await doc.save();
+  }
 
   return res.status(200).json({
     regId: String(doc._id),

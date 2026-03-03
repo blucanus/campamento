@@ -171,11 +171,12 @@ export default function Paso3() {
     setLoadingPay(true);
     try {
       const existingRegId = localStorage.getItem("regId") || "";
+      const accessCode = localStorage.getItem("registrationAccessCode") || "";
 
       const r = await fetch("/api/public/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step1, attendees, regId: existingRegId, cart: cartArr }),
+        body: JSON.stringify({ step1, attendees, regId: existingRegId, cart: cartArr, accessCode }),
       });
 
       const j = await r.json().catch(() => ({}));

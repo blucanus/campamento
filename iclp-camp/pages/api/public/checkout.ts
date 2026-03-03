@@ -6,6 +6,10 @@ import { createPreference } from "@/lib/mercadopago";
 import { Product } from "@/models/Product";
 import { ProductVariant } from "@/models/ProductVariant";
 import { Registration } from "@/models/Registration";
+import {
+  checkRegistrationAccess,
+  consumeRegistrationAccessCode
+} from "@/lib/registrationAccess";
 
 type CartItem = { variantId: string; qty: number };
 
@@ -45,13 +49,18 @@ function normalizePrimary(step1: any) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { step1, attendees, regId, cart } = req.body || {};
+  const { step1, attendees, regId, cart, accessCode } = req.body || {};
   if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
   const primary = normalizePrimary(step1);
   if (!primary.email) return res.status(400).json({ error: "Email requerido" });
 
   await connectDB();
+
+  const access = await checkRegistrationAccess({ code: accessCode, regId });
+  if (!access.allowed) {
+    return res.status(403).json({ error: access.reason || "Inscripciones cerradas." });
+  }
 
   const safeAttendees = sanitizeAttendees(attendees);
 
@@ -70,6 +79,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       extras: [],
       payment: { status: "pending" }
     });
+
+    if (!access.registrationsOpen && access.source === "invite_code") {
+      const consumed = await consumeRegistrationAccessCode(access.code);
+      if (!consumed) {
+        await Registration.deleteOne({ _id: doc._id });
+        return res.status(403).json({ error: "Este codigo ya no esta disponible." });
+      }
+      doc.accessCodeUsed = access.code;
+    }
   } else {
     // actualizar datos si volvieron a intentar
     doc.step1 = step1;

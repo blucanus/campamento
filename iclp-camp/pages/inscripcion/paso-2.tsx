@@ -154,10 +154,11 @@ export default function Paso2() {
     }));
 
     try {
+      const accessCode = localStorage.getItem("registrationAccessCode") || "";
       const r = await fetch("/api/public/create-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step1, attendees: normalizedLocal })
+        body: JSON.stringify({ step1, attendees: normalizedLocal, accessCode })
       });
 
       const j = await r.json().catch(() => ({}));
