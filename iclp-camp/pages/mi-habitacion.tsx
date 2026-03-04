@@ -40,7 +40,8 @@ const EMOJI = {
   bag: "\u{1F4BC}",
   smile: "\u{1F603}",
   ok: "\u2705",
-  hand: "\u{1F64B}"
+  hand: "\u{1F64B}",
+  important: "\u26A0\uFE0F"
 } as const;
 
 function friendlyBed(raw: string) {
@@ -49,6 +50,16 @@ function friendlyBed(raw: string) {
   if (v === "abajo") return "Abajo";
   if (v === "none" || v === "-") return "Sin asignar";
   return raw || "Sin asignar";
+}
+
+function getErrorMessage(ex: unknown) {
+  if (ex instanceof Error) return ex.message;
+  if (typeof ex === "string") return ex;
+  try {
+    return JSON.stringify(ex);
+  } catch {
+    return "Error desconocido";
+  }
 }
 
 export default function MiHabitacion() {
@@ -132,19 +143,65 @@ export default function MiHabitacion() {
     try {
       ticketNode.classList.add("is-exporting-pdf");
 
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      const [html2canvasMod, jsPdfMod] = await Promise.all([
         import("html2canvas"),
         import("jspdf")
       ]);
+      const html2canvasFn =
+        (html2canvasMod as unknown as { default?: unknown }).default || html2canvasMod;
+      const JsPdfCtor =
+        (jsPdfMod as unknown as { jsPDF?: unknown; default?: unknown }).jsPDF ||
+        (jsPdfMod as unknown as { default?: unknown }).default;
 
-      const canvas = await html2canvas(ticketNode, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff"
-      });
+      if (typeof html2canvasFn !== "function") {
+        throw new Error("No se pudo inicializar html2canvas.");
+      }
+      if (typeof JsPdfCtor !== "function") {
+        throw new Error("No se pudo inicializar jsPDF.");
+      }
+
+      const render = async (scale: number) =>
+        (html2canvasFn as (
+          el: HTMLElement,
+          opts: { scale: number; useCORS: boolean; backgroundColor: string }
+        ) => Promise<HTMLCanvasElement>)(ticketNode, {
+          scale,
+          useCORS: true,
+          backgroundColor: "#ffffff"
+        });
+
+      let canvas: HTMLCanvasElement;
+      try {
+        const deviceScale = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+        canvas = await render(Math.min(2, Math.max(1, deviceScale)));
+      } catch {
+        canvas = await render(1);
+      }
 
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+      const pdf = new (JsPdfCtor as new (opts: {
+        orientation: "p";
+        unit: "pt";
+        format: "a4";
+      }) => {
+        internal: { pageSize: { getWidth: () => number; getHeight: () => number } };
+        addImage: (
+          img: string,
+          format: string,
+          x: number,
+          y: number,
+          w: number,
+          h: number,
+          alias?: string,
+          compression?: string
+        ) => void;
+        addPage: () => void;
+        save: (filename: string) => void;
+      })({
+        orientation: "p",
+        unit: "pt",
+        format: "a4"
+      });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -167,8 +224,10 @@ export default function MiHabitacion() {
 
       const dniSafe = String(data.target.dni || "").replace(/\D/g, "") || "sin-dni";
       pdf.save(`boarding-pass-${dniSafe}.pdf`);
-    } catch {
-      setErr("No se pudo descargar el PDF. Intenta nuevamente.");
+    } catch (ex: unknown) {
+      const details = getErrorMessage(ex);
+      console.error("PDF export error:", ex);
+      setErr(`No se pudo descargar el PDF. Detalle: ${details}`);
     } finally {
       ticketNode.classList.remove("is-exporting-pdf");
       setDownloadingPdf(false);
@@ -183,131 +242,154 @@ export default function MiHabitacion() {
 
   return (
     <Layout title="Mi habitacion">
-      <div className="card check-pass-shell">
-        <div className="check-pass-hero">
-          <div>
-            <p className="check-pass-eyebrow">Informacion de alojamiento</p>
-            <h2 style={{ margin: 0 }}>
-              Boarding Pass del Campamento {EMOJI.ticket}
-            </h2>
-            <p style={{ margin: "8px 0 0", opacity: 0.82 }}>
-              Consulta por DNI para ver habitacion y cama asignadas.
-            </p>
+      <div className="check-pass-layout">
+        <div className="card check-pass-shell">
+          <div className="check-pass-hero">
+            <div>
+              <p className="check-pass-eyebrow">Informacion de alojamiento</p>
+              <h2 style={{ margin: 0 }}>
+                Boarding Pass del Campamento {EMOJI.ticket}
+              </h2>
+              <p style={{ margin: "8px 0 0", opacity: 0.82 }}>
+                Consulta por DNI para ver habitacion y cama asignadas.
+              </p>
+            </div>
+            <div className="check-pass-stamp" aria-hidden>
+              {EMOJI.ok} LISTO
+            </div>
           </div>
-          <div className="check-pass-stamp" aria-hidden>
-            {EMOJI.ok} LISTO
-          </div>
+
+          <form onSubmit={buscar} className="check-pass-search">
+            <input
+              placeholder="Ej: 30123456"
+              value={dni}
+              onChange={(e) => setDni(e.target.value)}
+              inputMode="numeric"
+            />
+            <button className="btn lp-btn-primary" type="submit" disabled={loading}>
+              {loading ? "Buscando..." : "Buscar DNI"}
+            </button>
+          </form>
+
+          {err ? (
+            <div className="alert" style={{ marginTop: 10 }}>
+              {err}
+            </div>
+          ) : null}
+
+          {data ? (
+            <div className="check-pass-ticket" ref={ticketRef}>
+              <div className="check-pass-head">
+                <div>
+                  <div className="check-pass-brand">
+                    {EMOJI.camp} Campamento ICLP
+                  </div>
+                  <div className="check-pass-code">BOARDING PASS / MI HABITACION</div>
+                </div>
+                <div className="check-pass-badge">
+                  {data.groupType === "familiar"
+                    ? `${EMOJI.family} FAMILIAR`
+                    : `${EMOJI.hand} INDIVIDUAL`}
+                </div>
+              </div>
+
+              <div className="check-pass-main">
+                <div className="check-pass-block">
+                  <p className="check-pass-label">Pasajero</p>
+                  <p className="check-pass-value">
+                    {EMOJI.person} {data.target.fullName}
+                  </p>
+                </div>
+                <div className="check-pass-block">
+                  <p className="check-pass-label">DNI</p>
+                  <p className="check-pass-value">
+                    {EMOJI.card} {data.target.dni || "-"}
+                  </p>
+                </div>
+                <div className="check-pass-block">
+                  <p className="check-pass-label">Habitacion</p>
+                  <p className="check-pass-value">
+                    {EMOJI.house} {data.target.room}
+                  </p>
+                </div>
+                <div className="check-pass-block">
+                  <p className="check-pass-label">Cama</p>
+                  <p className="check-pass-value">
+                    {EMOJI.bed} {friendlyBed(data.target.bed)}
+                  </p>
+                </div>
+              </div>
+
+              {data.isPrimary && hasFamily ? (
+                <div className="check-pass-family">
+                  <h3 style={{ marginTop: 0 }}>
+                    {EMOJI.family} Grupo Familiar ({data.groupCount})
+                  </h3>
+                  <div className="check-pass-family-list">
+                    {data.familyMembers.map((m, idx) => (
+                      <div key={`${m.dni}-${idx}`} className="check-pass-family-row">
+                        <div>
+                          <b>{m.fullName}</b>
+                          <span style={{ opacity: 0.75 }}>
+                            {" "}
+                            ({m.relation || "Integrante"})
+                            {m.isPrimary ? " - Principal" : ""}
+                          </span>
+                        </div>
+                        <div>
+                          Hab: <b>{m.room}</b> | Cama: <b>{friendlyBed(m.bed)}</b>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {!data.isPrimary && hasFamily ? (
+                <div className="check-pass-note">
+                  {EMOJI.info} Este DNI pertenece al grupo familiar de <b>{data.primaryName}</b>.
+                </div>
+              ) : null}
+
+              <div className="check-pass-actions">
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={downloadPdfDirect}
+                  disabled={downloadingPdf}
+                >
+                  {downloadingPdf ? "Generando PDF..." : "Descargar PDF"}
+                </button>
+                <button className="btn" type="button" onClick={sendWhatsApp}>
+                  Enviar por WhatsApp
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        <form onSubmit={buscar} className="check-pass-search">
-          <input
-            placeholder="Ej: 30123456"
-            value={dni}
-            onChange={(e) => setDni(e.target.value)}
-            inputMode="numeric"
-          />
-          <button className="btn lp-btn-primary" type="submit" disabled={loading}>
-            {loading ? "Buscando..." : "Buscar DNI"}
-          </button>
-        </form>
-
-        {err ? (
-          <div className="alert" style={{ marginTop: 10 }}>
-            {err}
-          </div>
-        ) : null}
-
-        {data ? (
-          <div className="check-pass-ticket" ref={ticketRef}>
-            <div className="check-pass-head">
-              <div>
-                <div className="check-pass-brand">
-                  {EMOJI.camp} Campamento ICLP
-                </div>
-                <div className="check-pass-code">BOARDING PASS / MI HABITACION</div>
-              </div>
-              <div className="check-pass-badge">
-                {data.groupType === "familiar"
-                  ? `${EMOJI.family} FAMILIAR`
-                  : `${EMOJI.hand} INDIVIDUAL`}
-              </div>
-            </div>
-
-            <div className="check-pass-main">
-              <div className="check-pass-block">
-                <p className="check-pass-label">Pasajero</p>
-                <p className="check-pass-value">
-                  {EMOJI.person} {data.target.fullName}
-                </p>
-              </div>
-              <div className="check-pass-block">
-                <p className="check-pass-label">DNI</p>
-                <p className="check-pass-value">
-                  {EMOJI.card} {data.target.dni || "-"}
-                </p>
-              </div>
-              <div className="check-pass-block">
-                <p className="check-pass-label">Habitacion</p>
-                <p className="check-pass-value">
-                  {EMOJI.house} {data.target.room}
-                </p>
-              </div>
-              <div className="check-pass-block">
-                <p className="check-pass-label">Cama</p>
-                <p className="check-pass-value">
-                  {EMOJI.bed} {friendlyBed(data.target.bed)}
-                </p>
-              </div>
-            </div>
-
-            {data.isPrimary && hasFamily ? (
-              <div className="check-pass-family">
-                <h3 style={{ marginTop: 0 }}>
-                  {EMOJI.family} Grupo Familiar ({data.groupCount})
-                </h3>
-                <div className="check-pass-family-list">
-                  {data.familyMembers.map((m, idx) => (
-                    <div key={`${m.dni}-${idx}`} className="check-pass-family-row">
-                      <div>
-                        <b>{m.fullName}</b>
-                        <span style={{ opacity: 0.75 }}>
-                          {" "}
-                          ({m.relation || "Integrante"})
-                          {m.isPrimary ? " - Principal" : ""}
-                        </span>
-                      </div>
-                      <div>
-                        Hab: <b>{m.room}</b> | Cama: <b>{friendlyBed(m.bed)}</b>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {!data.isPrimary && hasFamily ? (
-              <div className="check-pass-note">
-                {EMOJI.info} Este DNI pertenece al grupo familiar de <b>{data.primaryName}</b>.
-              </div>
-            ) : null}
-
-            <div className="check-pass-actions">
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={downloadPdfDirect}
-                disabled={downloadingPdf}
-              >
-                {downloadingPdf ? "Generando PDF..." : "Descargar PDF"}
-              </button>
-              <button className="btn" type="button" onClick={sendWhatsApp}>
-                Enviar por WhatsApp
-              </button>
-            </div>
-          </div>
-        ) : null}
+        <aside className="card camp-important">
+          <h3 style={{ marginTop: 0 }}>
+            {EMOJI.important} IMPORTANTE
+          </h3>
+          <p style={{ marginTop: 0, fontWeight: 800 }}>
+            Cosas que no pueden faltar en el campa
+          </p>
+          <ul className="camp-important-list">
+            <li>Ropa de cama (sabana y funda de almohada)</li>
+            <li>Kit de higiene personal (jabon, shampoo, desodorante, cepillo de diente, pasta dental)</li>
+            <li>Ropa comoda</li>
+            <li>Ropa para la pileta, ser prudentes y piadoso(as)</li>
+            <li>Toalla o toallon</li>
+            <li>Campera o buzo</li>
+            <li>Repelente</li>
+            <li>Protector solar</li>
+            <li>Botella de agua</li>
+            <li>Biblia</li>
+            <li>Anotador y lapicera</li>
+          </ul>
+        </aside>
       </div>
     </Layout>
   );
 }
-

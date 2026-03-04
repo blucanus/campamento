@@ -462,6 +462,29 @@ small{ color:var(--muted); }
     #fff;
 }
 
+.check-pass-layout{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 320px;
+  gap:14px;
+  align-items:start;
+}
+
+.camp-important{
+  position:sticky;
+  top:14px;
+  border:1px solid rgba(236,160,43,0.34);
+  background:
+    linear-gradient(180deg, rgba(236,160,43,0.12), rgba(236,160,43,0.04)),
+    #fff;
+}
+
+.camp-important-list{
+  margin:0;
+  padding-left:18px;
+  display:grid;
+  gap:7px;
+}
+
 .check-pass-hero{
   display:flex;
   justify-content:space-between;
@@ -626,6 +649,9 @@ small{ color:var(--muted); }
 }
 
 @media (max-width: 780px){
+  .check-pass-layout{
+    grid-template-columns:1fr;
+  }
   .check-pass-search{
     grid-template-columns:1fr;
   }
