@@ -8,6 +8,9 @@ type AttendeeLike = {
   dni?: string;
   relation?: string;
   isPrimary?: boolean;
+  room?: string;
+  bed?: string;
+  type?: string;
   lodging?: {
     room?: string;
     bed?: string;
@@ -17,6 +20,11 @@ type AttendeeLike = {
 
 type LodgingType = "none" | "bunk" | "dept";
 type RegistrationLite = {
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  payment?: {
+    status?: string;
+  };
   attendees?: AttendeeLike[];
   primary?: {
     name?: string;
@@ -32,17 +40,33 @@ function normalizeDni(value: string) {
 }
 
 function pickRoom(a: AttendeeLike | undefined) {
-  return String(a?.lodging?.room || "").trim() || "-";
+  return String(a?.lodging?.room || a?.room || "").trim() || "-";
 }
 
 function pickBed(a: AttendeeLike | undefined) {
-  return String(a?.lodging?.bed || "").trim() || "-";
+  return String(a?.lodging?.bed || a?.bed || "").trim() || "-";
 }
 
 function pickLodgingType(a: AttendeeLike | undefined): LodgingType {
-  const value = String(a?.lodging?.type || "none").trim().toLowerCase();
+  const value = String(a?.lodging?.type || a?.type || "none").trim().toLowerCase();
   if (value === "bunk" || value === "dept") return value;
   return "none";
+}
+
+function hasAssignedLodging(a: AttendeeLike | undefined) {
+  const room = pickRoom(a);
+  const bed = pickBed(a);
+  const type = pickLodgingType(a);
+  if (type === "dept") return room !== "-";
+  if (type === "bunk") return room !== "-";
+  return room !== "-" || (bed !== "-" && bed !== "none");
+}
+
+function getRankTimestamp(reg: RegistrationLite) {
+  const updated = reg?.updatedAt ? new Date(reg.updatedAt).getTime() : 0;
+  if (Number.isFinite(updated) && updated > 0) return updated;
+  const created = reg?.createdAt ? new Date(reg.createdAt).getTime() : 0;
+  return Number.isFinite(created) && created > 0 ? created : 0;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -54,25 +78,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!dniNorm) return res.status(400).json({ error: "DNI requerido" });
 
   const regs = await Registration.find({})
-    .select("attendees primary step1")
+    .select("attendees primary step1 createdAt updatedAt payment")
     .lean();
 
-  let foundReg: RegistrationLite | null = null;
-  let foundAttendee: AttendeeLike | undefined;
+  const matches: Array<{
+    reg: RegistrationLite;
+    attendee: AttendeeLike;
+    hasLodging: boolean;
+    isApproved: boolean;
+    timestamp: number;
+  }> = [];
 
   for (const reg of regs as RegistrationLite[]) {
     const attendees: AttendeeLike[] = Array.isArray(reg?.attendees) ? reg.attendees : [];
-    const hit = attendees.find((x) => normalizeDni(String(x?.dni || "")) === dniNorm);
-    if (hit) {
-      foundReg = reg;
-      foundAttendee = hit;
-      break;
+    for (const x of attendees) {
+      if (normalizeDni(String(x?.dni || "")) !== dniNorm) continue;
+      matches.push({
+        reg,
+        attendee: x,
+        hasLodging: hasAssignedLodging(x),
+        isApproved: String(reg?.payment?.status || "").toLowerCase() === "approved",
+        timestamp: getRankTimestamp(reg)
+      });
     }
   }
 
-  if (!foundReg || !foundAttendee) {
+  if (matches.length === 0) {
     return res.status(404).json({ error: "No encontrado" });
   }
+
+  matches.sort((a, b) => {
+    if (a.hasLodging !== b.hasLodging) return a.hasLodging ? -1 : 1;
+    if (a.isApproved !== b.isApproved) return a.isApproved ? -1 : 1;
+    return b.timestamp - a.timestamp;
+  });
+
+  const best = matches[0];
+  const foundReg = best.reg;
+  const foundAttendee = best.attendee;
 
   const attendees: AttendeeLike[] = Array.isArray(foundReg.attendees) ? foundReg.attendees : [];
   const primaryFromAttendees =
