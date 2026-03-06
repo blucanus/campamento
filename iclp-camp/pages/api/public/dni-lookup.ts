@@ -14,6 +14,8 @@ type AttendeeLike = {
     type?: string;
   };
 };
+
+type LodgingType = "none" | "bunk" | "dept";
 type RegistrationLite = {
   attendees?: AttendeeLike[];
   primary?: {
@@ -35,6 +37,12 @@ function pickRoom(a: AttendeeLike | undefined) {
 
 function pickBed(a: AttendeeLike | undefined) {
   return String(a?.lodging?.bed || "").trim() || "-";
+}
+
+function pickLodgingType(a: AttendeeLike | undefined): LodgingType {
+  const value = String(a?.lodging?.type || "none").trim().toLowerCase();
+  if (value === "bunk" || value === "dept") return value;
+  return "none";
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -89,6 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     dni: String(x?.dni || ""),
     relation: String(x?.relation || ""),
     isPrimary: Boolean(x?.isPrimary),
+    lodgingType: pickLodgingType(x),
     room: pickRoom(x),
     bed: pickBed(x)
   }));
@@ -101,12 +110,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     dni: String(foundAttendee.dni || ""),
     relation: String(foundAttendee.relation || ""),
     isPrimary: Boolean(foundAttendee.isPrimary),
+    lodgingType: pickLodgingType(foundAttendee),
     room: pickRoom(foundAttendee),
     bed: pickBed(foundAttendee)
   };
 
   // Compatibilidad con la UI vieja de /mi-habitacion
   return res.json({
+    lodgingType: target.lodgingType,
     room: target.room,
     bed: target.bed,
     target,

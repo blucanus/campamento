@@ -8,11 +8,13 @@ type FamilyMember = {
   dni: string;
   relation: string;
   isPrimary: boolean;
+  lodgingType?: "none" | "bunk" | "dept";
   room: string;
   bed: string;
 };
 
 type LookupResponse = {
+  lodgingType?: "none" | "bunk" | "dept";
   room: string;
   bed: string;
   target: FamilyMember;
@@ -52,6 +54,15 @@ function friendlyBed(raw: string) {
   return raw || "Sin asignar";
 }
 
+function hasDepartment(member: Pick<FamilyMember, "lodgingType"> | null | undefined) {
+  return member?.lodgingType === "dept";
+}
+
+function lodgingText(member: Pick<FamilyMember, "lodgingType" | "room" | "bed">) {
+  if (hasDepartment(member)) return `Departamento: ${member.room || "-"}`;
+  return `Hab: ${member.room || "-"} | Cama: ${friendlyBed(member.bed)}`;
+}
+
 function getErrorMessage(ex: unknown) {
   if (ex instanceof Error) return ex.message;
   if (typeof ex === "string") return ex;
@@ -78,11 +89,15 @@ export default function MiHabitacion() {
     const lines: string[] = [];
     lines.push(`${EMOJI.rainbow} *Tu lugar en el Campa ya esta listo!*`);
     lines.push(`${EMOJI.camp} *Campamento ICLP - Boarding Pass*`);
-    lines.push("━━━━━━━━━━━━━━━━━━━━");
+    lines.push("--------------------");
     lines.push(`${EMOJI.wave} *Nombre:* ${data.target.fullName}`);
     lines.push(`${EMOJI.card} *DNI:* ${data.target.dni || "-"}`);
-    lines.push(`${EMOJI.house} *Habitacion:* ${data.target.room}`);
-    lines.push(`${EMOJI.bed} *Cama:* ${friendlyBed(data.target.bed)}`);
+    if (hasDepartment(data.target)) {
+      lines.push(`${EMOJI.house} *Departamento:* ${data.target.room}`);
+    } else {
+      lines.push(`${EMOJI.house} *Habitacion:* ${data.target.room}`);
+      lines.push(`${EMOJI.bed} *Cama:* ${friendlyBed(data.target.bed)}`);
+    }
     lines.push(
       `${EMOJI.people} *Modalidad:* ${
         data.groupType === "familiar" ? "Grupo familiar" : "Individual"
@@ -94,7 +109,7 @@ export default function MiHabitacion() {
       lines.push(`${EMOJI.heart} *Tu equipo familiar (${data.groupCount})*`);
       for (const m of data.familyMembers) {
         lines.push(
-          `• ${m.fullName} (${m.dni || "-"})\n   ${EMOJI.house} ${m.room} | ${EMOJI.bed} ${friendlyBed(m.bed)}`
+          `- ${m.fullName} (${m.dni || "-"})\n   ${EMOJI.house} ${lodgingText(m)}`
         );
       }
     } else if (!data.isPrimary && hasFamily) {
@@ -251,7 +266,7 @@ export default function MiHabitacion() {
                 Boarding Pass del Campamento {EMOJI.ticket}
               </h2>
               <p style={{ margin: "8px 0 0", opacity: 0.82 }}>
-                Consulta por DNI para ver habitacion y cama asignadas.
+                Consulta por DNI para ver departamento o habitacion y cama asignadas.
               </p>
             </div>
             <div className="check-pass-stamp" aria-hidden>
@@ -306,18 +321,29 @@ export default function MiHabitacion() {
                     {EMOJI.card} {data.target.dni || "-"}
                   </p>
                 </div>
-                <div className="check-pass-block">
-                  <p className="check-pass-label">Habitacion</p>
-                  <p className="check-pass-value">
-                    {EMOJI.house} {data.target.room}
-                  </p>
-                </div>
-                <div className="check-pass-block">
-                  <p className="check-pass-label">Cama</p>
-                  <p className="check-pass-value">
-                    {EMOJI.bed} {friendlyBed(data.target.bed)}
-                  </p>
-                </div>
+                {hasDepartment(data.target) ? (
+                  <div className="check-pass-block">
+                    <p className="check-pass-label">Departamento</p>
+                    <p className="check-pass-value">
+                      {EMOJI.house} {data.target.room}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="check-pass-block">
+                      <p className="check-pass-label">Habitacion</p>
+                      <p className="check-pass-value">
+                        {EMOJI.house} {data.target.room}
+                      </p>
+                    </div>
+                    <div className="check-pass-block">
+                      <p className="check-pass-label">Cama</p>
+                      <p className="check-pass-value">
+                        {EMOJI.bed} {friendlyBed(data.target.bed)}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
               {data.isPrimary && hasFamily ? (
@@ -336,9 +362,15 @@ export default function MiHabitacion() {
                             {m.isPrimary ? " - Principal" : ""}
                           </span>
                         </div>
-                        <div>
-                          Hab: <b>{m.room}</b> | Cama: <b>{friendlyBed(m.bed)}</b>
-                        </div>
+                        {hasDepartment(m) ? (
+                          <div>
+                            Departamento: <b>{m.room}</b>
+                          </div>
+                        ) : (
+                          <div>
+                            Hab: <b>{m.room}</b> | Cama: <b>{friendlyBed(m.bed)}</b>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
