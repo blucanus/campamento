@@ -16,6 +16,9 @@ export default function Paso1() {
   const [gateMsg, setGateMsg] = useState("");
   const [manualCode, setManualCode] = useState("");
   const [specialAccess, setSpecialAccess] = useState(false);
+  const [lookupDni, setLookupDni] = useState("");
+  const [lookupMsg, setLookupMsg] = useState("");
+  const [lookingUp, setLookingUp] = useState(false);
   const [form, setForm] = useState({
     count: 1,
     optionDays: "full" as OptionDays,
@@ -87,6 +90,53 @@ export default function Paso1() {
         ? form.oneDay
         : form.twoDays;
   }, [form.optionDays, form.oneDay, form.twoDays]);
+
+  // Autocompletar con los datos de campas anteriores (padron de personas).
+  async function autocompletar() {
+    const dni = String(lookupDni || "").replace(/\D/g, "");
+    if (!dni) {
+      setLookupMsg("Ingresá un DNI para buscar.");
+      return;
+    }
+
+    setLookingUp(true);
+    setLookupMsg("");
+    try {
+      const r = await fetch(`/api/public/camper-lookup?dni=${encodeURIComponent(dni)}`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "No encontramos ese DNI.");
+
+      type Member = { dni?: string; firstName?: string; lastName?: string };
+      const person = (j.person || {}) as Member;
+      const members = (Array.isArray(j.members) ? j.members : []) as Member[];
+
+      // El que busca queda primero: va a ser el familiar principal de esta inscripción.
+      const ordered = [person, ...members.filter((m) => String(m.dni || "") !== String(person.dni || ""))];
+
+      setForm((p) => ({
+        ...p,
+        count: Math.max(1, ordered.length),
+        primaryFirstName: person.firstName || p.primaryFirstName,
+        primaryLastName: person.lastName || p.primaryLastName,
+        phone: String(j.phone || "") || p.phone,
+        email: String(j.email || "") || p.email
+      }));
+
+      localStorage.setItem("prefillGroup", JSON.stringify(ordered));
+      localStorage.removeItem("step2");
+      localStorage.removeItem("regId");
+
+      setLookupMsg(
+        ordered.length > 1
+          ? `Encontramos ${ordered.length} personas de tu grupo. En el paso 2 revisás quiénes vienen este año.`
+          : "Cargamos tus datos. Revisalos por las dudas."
+      );
+    } catch (e: unknown) {
+      setLookupMsg(e instanceof Error ? e.message : "No se pudo buscar el DNI.");
+    } finally {
+      setLookingUp(false);
+    }
+  }
 
   function setCount(next: number) {
     setForm((p) => ({ ...p, count: clamp(next, 1, 20) })); // límite 20 (ajustalo si querés)
@@ -171,6 +221,32 @@ export default function Paso1() {
               Acceso especial habilitado por codigo unico
             </div>
           ) : null}
+
+          <div className="card cardTight" style={{ marginBottom: 12, borderStyle: "dashed" }}>
+            <h3 style={{ margin: 0 }}>¿Ya viniste a un campa?</h3>
+            <p style={{ margin: "6px 0 10px", opacity: 0.85 }}>
+              Poné tu DNI y completamos tus datos y los de tu grupo familiar.
+            </p>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                placeholder="Ej: 30123456"
+                inputMode="numeric"
+                value={lookupDni}
+                onChange={(e) => setLookupDni(e.target.value)}
+                style={{ flex: "1 1 220px" }}
+              />
+              <button className="btn secondary" type="button" onClick={autocompletar} disabled={lookingUp}>
+                {lookingUp ? "Buscando..." : "Autocompletar"}
+              </button>
+            </div>
+
+            {lookupMsg ? (
+              <div className="fieldHint" style={{ marginTop: 8 }}>
+                {lookupMsg}
+              </div>
+            ) : null}
+          </div>
 
           <form onSubmit={submit}>
             <div className="formGrid">

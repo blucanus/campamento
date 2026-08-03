@@ -9,6 +9,7 @@ export default function MPSuccess() {
     localStorage.removeItem("step1");
     localStorage.removeItem("step2");
     localStorage.removeItem("registrationAccessCode");
+    localStorage.removeItem("prefillGroup");
   }, []);
 
   return (

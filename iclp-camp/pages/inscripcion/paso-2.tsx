@@ -52,6 +52,26 @@ export default function Paso2() {
       return;
     }
 
+    // Datos traidos del padron (paso 1 -> "Autocompletar por DNI")
+    const prefill = JSON.parse(localStorage.getItem("prefillGroup") || "null");
+    if (Array.isArray(prefill) && prefill.length) {
+      const base = prefill.map((m: any, idx: number) => ({
+        ...emptyPerson(),
+        firstName: m?.firstName || "",
+        lastName: m?.lastName || "",
+        dni: m?.dni || "",
+        age: String(m?.age || ""),
+        sex: m?.sex || "M",
+        isPrimary: idx === 0,
+        relation: idx === 0 ? "Principal" : m?.relation || "Hijo/a"
+      }));
+      setAttendees(base);
+      // Se consume una sola vez: a partir de acá manda step2.
+      localStorage.setItem("step2", JSON.stringify(base));
+      localStorage.removeItem("prefillGroup");
+      return;
+    }
+
     const count = Number(s1.count || 1);
     const base = Array.from({ length: count }).map(() => emptyPerson());
 
@@ -111,6 +131,53 @@ export default function Paso2() {
         return { ...p, isPrimary: false, relation: rel };
       })
     );
+  }
+
+  // El paso 1 manda la cantidad: si acá se agrega o se saca gente, lo sincronizamos.
+  function syncCount(len: number) {
+    const next = { ...step1, count: len };
+    setStep1(next);
+    localStorage.setItem("step1", JSON.stringify(next));
+  }
+
+  function addPerson() {
+    const next = [...attendees, emptyPerson()];
+    setAttendees(next);
+    syncCount(next.length);
+  }
+
+  function removePerson(i: number) {
+    if (attendees.length <= 1) return;
+    const next = attendees.filter((_, idx) => idx !== i);
+    if (!next.some((a) => a.isPrimary)) {
+      next[0] = { ...next[0], isPrimary: true, relation: "Principal" };
+    }
+    setAttendees(next);
+    syncCount(next.length);
+  }
+
+  // Al salir del campo DNI completamos lo que falte con los datos de campas anteriores.
+  async function lookupDni(i: number) {
+    const dni = String(attendees[i]?.dni || "").replace(/\D/g, "");
+    if (!dni) return;
+
+    try {
+      const r = await fetch(`/api/public/camper-lookup?dni=${encodeURIComponent(dni)}`);
+      if (!r.ok) return;
+      const j = await r.json().catch(() => ({}));
+      const p = j?.person;
+      if (!p) return;
+
+      const current = attendees[i];
+      update(i, {
+        firstName: current.firstName || p.firstName || "",
+        lastName: current.lastName || p.lastName || "",
+        age: String(current.age || "") || String(p.age || ""),
+        sex: current.sex || p.sex || "M"
+      });
+    } catch {
+      // si falla, se completa a mano
+    }
   }
 
   function back() {
@@ -323,18 +390,32 @@ export default function Paso2() {
                       Persona #{i + 1} {a.isPrimary ? <span className="badgePill">⭐ Principal</span> : null}
                     </h3>
 
-                    {!a.isPrimary ? (
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => setPrimary(i)}
-                        style={{ borderRadius: 999, fontWeight: 900 }}
-                      >
-                        Hacer principal
-                      </button>
-                    ) : (
-                      <span className="badgePill">Este es el familiar principal</span>
-                    )}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      {!a.isPrimary ? (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          onClick={() => setPrimary(i)}
+                          style={{ borderRadius: 999, fontWeight: 900 }}
+                        >
+                          Hacer principal
+                        </button>
+                      ) : (
+                        <span className="badgePill">Este es el familiar principal</span>
+                      )}
+
+                      {attendees.length > 1 ? (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          onClick={() => removePerson(i)}
+                          style={{ borderRadius: 999, fontWeight: 900 }}
+                          title="Esta persona no viene al campa"
+                        >
+                          ✕ No viene
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="formGrid" style={{ marginTop: 10 }}>
@@ -356,7 +437,9 @@ export default function Paso2() {
                         inputMode="numeric"
                         placeholder="Sin puntos"
                         onChange={(e) => update(i, { dni: e.target.value })}
+                        onBlur={() => lookupDni(i)}
                       />
+                      <div className="fieldHint">Si ya viniste, completamos el resto solo.</div>
                     </div>
 
                     <div>
@@ -455,6 +538,12 @@ export default function Paso2() {
               );
             });
           })()}
+
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="btn secondary" onClick={addPerson}>
+              ➕ Agregar persona
+            </button>
+          </div>
 
           <div className="stickyBar" style={{ marginTop: 14 }}>
             <button type="button" className="btn secondary" onClick={back}>

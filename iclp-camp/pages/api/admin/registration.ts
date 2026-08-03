@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const reg: any = await Registration.findById(id)
     .select(
-      "primary step1 attendees extras payment createdAt extrasDelivered extrasDeliveredAt extrasDeliveredBy"
+      "primary step1 attendees extras payment createdAt extrasDelivered extrasDeliveredAt extrasDeliveredBy accessCodeUsed"
     )
     .lean();
 

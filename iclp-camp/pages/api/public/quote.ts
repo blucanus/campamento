@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { computeTotalARS } from "@/lib/pricing";
+import { getCampEdition } from "@/lib/campEdition";
 import { connectDB } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { ProductVariant } from "@/models/ProductVariant";
@@ -12,10 +13,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { step1, attendees, cart } = req.body || {};
   if (!step1 || !Array.isArray(attendees)) return res.status(400).json({ error: "Invalid payload" });
 
-  const base = computeTotalARS(step1, attendees);
   const cartItems: CartItem[] = Array.isArray(cart) ? cart : [];
 
   await connectDB();
+
+  const camp = await getCampEdition();
+  const base = computeTotalARS(step1, attendees, camp.priceFull);
 
   const products = await Product.find({}).lean();
   const prodById = new Map(products.map((p: any) => [String(p._id), p]));

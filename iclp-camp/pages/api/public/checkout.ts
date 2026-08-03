@@ -10,6 +10,8 @@ import {
   checkRegistrationAccess,
   consumeRegistrationAccessCode
 } from "@/lib/registrationAccess";
+import { getCampEdition } from "@/lib/campEdition";
+import { saveCampers } from "@/lib/campers";
 
 type CartItem = { variantId: string; qty: number };
 
@@ -57,6 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectDB();
 
+  const camp = await getCampEdition();
   const access = await checkRegistrationAccess({ code: accessCode, regId });
   if (!access.allowed) {
     return res.status(403).json({ error: access.reason || "Inscripciones cerradas." });
@@ -95,6 +98,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     doc.attendees = safeAttendees;
   }
 
+  // Padron de personas: sobrevive al cierre de la edicion (no rompe la inscripcion si falla).
+  try {
+    await saveCampers({
+      attendees: safeAttendees,
+      email: primary.email,
+      phone: primary.phone,
+      edition: camp.edition
+    });
+  } catch (e) {
+    console.error("saveCampers", e);
+  }
+
   if (doc.payment?.status === "approved") {
     await doc.save();
     return res.status(200).json({ regId: String(doc._id), alreadyPaid: true });
@@ -107,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // ✅ pricing base con descuento por 5to+
-  const base = computeTotalARS(step1, safeAttendees);
+  const base = computeTotalARS(step1, safeAttendees, camp.priceFull);
   const campTotal = Number((base as any).campTotal ?? (base as any).total ?? 0);
 
   // extras

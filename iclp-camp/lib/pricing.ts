@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 
-export function computeTotalARS(step1: any, attendees: any[]) {
-  const campFull = Number(env.CAMP_PRICE_FULL || 0);
+export function computeTotalARS(step1: any, attendees: any[], priceFull?: number) {
+  const campFull = Number(priceFull || env.CAMP_PRICE_FULL || 0);
   const oneDayFactor = Number(env.CAMP_PRICE_ONE_DAY_FACTOR || 0.5);
 
   // Personas que pagan: edad >= 4

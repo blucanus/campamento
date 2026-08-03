@@ -3,15 +3,29 @@ import { connectDB } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { RegistrationAccessCode } from "@/models/RegistrationAccessCode";
+import { Registration } from "@/models/Registration";
+import { MerchOrder } from "@/models/MerchOrder";
 import {
   generateRegistrationAccessCode,
   getOrCreateRegistrationControl
 } from "@/lib/registrationAccess";
+import { archiveCollectionName, getCampEdition } from "@/lib/campEdition";
+import { auditLog } from "@/lib/audit";
+
+type EditionInput = {
+  edition?: string;
+  datesText?: string;
+  priceFull?: number;
+  priceNote?: string;
+  motto?: string;
+};
 
 type ActionBody =
   | { action: "set_open"; open: boolean }
   | { action: "create_invite"; note?: string; maxUses?: number; expiresDays?: number }
-  | { action: "deactivate_invite"; code?: string };
+  | { action: "deactivate_invite"; code?: string }
+  | ({ action: "set_edition" } & EditionInput)
+  | ({ action: "new_edition"; archive?: boolean } & EditionInput);
 type InviteLean = {
   code?: string;
   note?: string;
@@ -30,6 +44,25 @@ function normalizeCode(input: unknown) {
     .replace(/\s+/g, "");
 }
 
+/**
+ * Copia inscripciones y compras de merch a colecciones historicas (registrations_2026, etc.).
+ * Los datos de las personas viven aparte, en la coleccion `campers`, y no se tocan.
+ */
+async function archiveCurrentEdition(previousEdition: string) {
+  const regCount = await Registration.countDocuments({});
+  const merchCount = await MerchOrder.countDocuments({});
+
+  // $out pisa la coleccion destino: solo archivamos si hay algo que archivar.
+  if (regCount > 0) {
+    await Registration.aggregate([{ $out: archiveCollectionName("registrations", previousEdition) }]);
+  }
+  if (merchCount > 0) {
+    await MerchOrder.aggregate([{ $out: archiveCollectionName("merchorders", previousEdition) }]);
+  }
+
+  return { registrations: regCount, merchOrders: merchCount };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const admin = requireAdmin(req);
   if (!admin) return res.status(401).json({ error: "Unauthorized" });
@@ -45,6 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       registrationsOpen: Boolean(control.registrationsOpen),
+      camp: await getCampEdition(),
       invites: (invites as InviteLean[]).map((x) => {
         const code = String(x.code || "");
         return {
@@ -122,6 +156,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         link
       }
     });
+  }
+
+  if (action === "set_edition" || action === "new_edition") {
+    const input = body as EditionInput & { archive?: boolean };
+    const edition = String(input.edition || "").trim();
+    if (!edition) return res.status(400).json({ error: "Falta el nombre de la edicion (ej: 2027)." });
+
+    const control = await getOrCreateRegistrationControl();
+    const previousEdition = String(control.edition || "sin-edicion");
+
+    let archived = { registrations: 0, merchOrders: 0 };
+
+    if (action === "new_edition") {
+      if (input.archive !== false) {
+        archived = await archiveCurrentEdition(previousEdition);
+      }
+      await Registration.deleteMany({});
+      await MerchOrder.deleteMany({});
+      await RegistrationAccessCode.updateMany({ isActive: true }, { $set: { isActive: false } });
+      control.registrationsOpen = true;
+    }
+
+    control.edition = edition;
+    control.datesText = String(input.datesText || "").trim();
+    control.priceFull = Math.max(0, Number(input.priceFull || 0));
+    control.priceNote = String(input.priceNote || "").trim();
+    control.motto = String(input.motto || "").trim();
+    await control.save();
+
+    await auditLog({
+      req,
+      actor: { id: admin.id, email: admin.email, role: admin.role },
+      action,
+      entity: "RegistrationControl",
+      meta: { previousEdition, edition, archived }
+    });
+
+    return res.status(200).json({ ok: true, camp: await getCampEdition(), archived });
   }
 
   if (action === "deactivate_invite") {

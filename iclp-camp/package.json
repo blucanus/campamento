@@ -41,6 +41,7 @@
     "start": "next start",
     "seed": "node scripts/seed-admin.mjs",
     "seed:base": "node scripts/seed-base-products.mjs",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types scripts/test-pure.ts"
   }
 }

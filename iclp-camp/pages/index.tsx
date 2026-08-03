@@ -1,7 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connectDB } from "@/lib/db";
+import { DEFAULT_EDITION, getCampEdition, type CampEdition } from "@/lib/campEdition";
+import { env } from "@/lib/env";
+import { MAPS_URL } from "@/lib/maps";
 
-export default function Home() {
+export async function getServerSideProps() {
+  try {
+    await connectDB();
+    return { props: { camp: await getCampEdition() } };
+  } catch {
+    // Si la DB no responde, la landing igual tiene que verse.
+    return { props: { camp: { ...DEFAULT_EDITION, priceFull: env.CAMP_PRICE_FULL } } };
+  }
+}
+
+export default function Home({ camp }: { camp: CampEdition }) {
+  const priceFull = Number(camp.priceFull || 0);
+  const priceOneDay = Math.round(priceFull / 2);
+
   return (
     <div>
       {/* HERO */}
@@ -11,7 +28,7 @@ export default function Home() {
             <div className="lp-logo">
               <Image
                 src="/logo.png"
-                alt="Campa ICLP 2026"
+                alt={`Campa ICLP ${camp.edition}`}
                 width={160}
                 height={160}
                 priority
@@ -19,12 +36,10 @@ export default function Home() {
             </div>
 
             <h1 className="lp-title">
-              Campamento Familiar ICLP <span className="lp-badge">2026</span>
+              Campamento Familiar ICLP <span className="lp-badge">{camp.edition}</span>
             </h1>
 
-            <h2 className="lp-subtitle">
-              “Hasta que nos venga a buscar”
-            </h2>
+            <h2 className="lp-subtitle">{camp.motto}</h2>
             <p className="lp-subtitle">
               La inscripción es 100% digital desde esta web.
             </p>
@@ -33,7 +48,7 @@ export default function Home() {
             </p>
 
             <div className="lp-meta">
-              <div className="lp-chip">📅 6, 7 y 8 de marzo 2026</div>
+              <div className="lp-chip">📅 {camp.datesText}</div>
               <div className="lp-chip">⏱️ Viernes a Domingo</div>
               <div className="lp-chip">👨‍👩‍👧‍👦 Cupos limitados</div>
             </div>
@@ -140,7 +155,7 @@ export default function Home() {
         <div className="container">
           <div className="lp-section-head">
             <h2>Precios</h2>
-            <p>Valores hasta el 31/01/2026</p>
+            <p>{camp.priceNote}</p>
           </div>
 
           <div className="lp-grid-2">
@@ -148,7 +163,7 @@ export default function Home() {
               <h3>Campamento completo (2 días o más)</h3>
               <p className="lp-price">
                 <span className="lp-price-big">$</span>
-                <b>$ 63.000</b>por persona
+                <b>$ {priceFull.toLocaleString("es-AR")}</b> por persona
               </p>
               <p className="lp-muted">
                 Si elegís 2 días (Vie-Sáb o Sáb-Dom) o todo el campa, abonás el total.
@@ -256,7 +271,7 @@ export default function Home() {
           <div className="lp-faq">
             <details className="lp-faq-item">
               <summary>Quiero ir  1 día:</summary>
-              <p>1 día de campa: Para ir 1 solo día al campa abonás el 50% de la entrada general, que sería un total de $32.500.</p>
+              <p>1 día de campa: Para ir 1 solo día al campa abonás el 50% de la entrada general, que sería un total de ${priceOneDay.toLocaleString("es-AR")}.</p>
             </details>
 
             <details className="lp-faq-item">
@@ -274,7 +289,11 @@ export default function Home() {
 
             <details className="lp-faq-item">
               <summary>Ubicación</summary>
-              <p>El campamento Elim, está ubicado en la ciudad de Verónica a 91 Km de La Plata, 1hr y 20 min aproximados. Te dejamos el link de Google Maps para que te guie en como llegar. https://maps.app.goo.gl/YwMEDeD5yiQG342b8</p>
+              <p>
+                El campamento Elim, está ubicado en la ciudad de Verónica a 91 Km de La Plata, 1hr y 20 min aproximados.
+                Te dejamos el link de Google Maps para que te guie en como llegar:{" "}
+                <a href={MAPS_URL} target="_blank" rel="noreferrer">{MAPS_URL}</a>
+              </p>
             </details>
 
             <details className="lp-faq-item">

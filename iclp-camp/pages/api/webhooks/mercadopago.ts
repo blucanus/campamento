@@ -5,6 +5,7 @@ import { MerchOrder } from "@/models/MerchOrder";
 import { env } from "@/lib/env";
 import { sendConfirmationEmail } from "@/lib/notify";
 import { mailApproved } from "@/lib/templates";
+import { getCampEdition } from "@/lib/campEdition";
 import { ProductVariant } from "@/models/ProductVariant";
 
 async function fetchPayment(paymentId: string) {
@@ -114,7 +115,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         "";
 
       if (email) {
-        const m = mailApproved({ fullName, attendeesCount: reg.attendees?.length || 0 });
+        const camp = await getCampEdition();
+        const m = mailApproved({
+          fullName,
+          attendeesCount: reg.attendees?.length || 0,
+          datesText: camp.datesText
+        });
         try {
           await sendConfirmationEmail(email, m.subject, m.html);
         } catch {

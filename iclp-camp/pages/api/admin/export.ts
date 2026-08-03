@@ -21,6 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tel: reg.primary?.phone || "",
         email: reg.primary?.email || "",
         pago: reg.payment?.status || "",
+        fechaInscripcion: reg.createdAt ? new Date(reg.createdAt).toLocaleString("es-AR") : "",
+        fechaPago:
+          String(reg.payment?.status || "").toLowerCase() === "approved" && reg.payment?.lastEventAt
+            ? new Date(reg.payment.lastEventAt).toLocaleString("es-AR")
+            : "",
+        codigo: reg.accessCodeUsed || "",
         nombre: a.firstName || "",
         apellido: a.lastName || "",
         dni: a.dni || "",

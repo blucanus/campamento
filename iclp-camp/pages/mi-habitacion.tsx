@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { MAPS_PLACE, MAPS_URL } from "@/lib/maps";
 import { FormEvent, useMemo, useRef, useState } from "react";
 
 type FamilyMember = {
@@ -117,6 +118,9 @@ export default function MiHabitacion() {
       lines.push(`${EMOJI.info} Vas con el grupo de *${data.primaryName}*.`);
     }
 
+    lines.push("");
+    lines.push(`${EMOJI.house} *Como llegar:* ${MAPS_PLACE}`);
+    lines.push(MAPS_URL);
     lines.push("");
     lines.push(`${EMOJI.confetti} Se viene un campa hermoso!`);
     lines.push(`${EMOJI.bag} Tip: trae abrigo, buena onda y muchas ganas.`);
@@ -382,6 +386,13 @@ export default function MiHabitacion() {
                   {EMOJI.info} Este DNI pertenece al grupo familiar de <b>{data.primaryName}</b>.
                 </div>
               ) : null}
+
+              <div className="check-pass-note">
+                {EMOJI.house} <b>Cómo llegar:</b> {MAPS_PLACE} —{" "}
+                <a href={MAPS_URL} target="_blank" rel="noreferrer">
+                  Ver en Google Maps
+                </a>
+              </div>
 
               <div className="check-pass-actions">
                 <button

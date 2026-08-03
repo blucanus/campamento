@@ -219,6 +219,12 @@ export default function Registro() {
     : "-";
   const mpOperationNumber = String(reg?.payment?.paymentId || "").trim() || "-";
 
+  const paidAtLabel =
+    String(reg?.payment?.status || "").toLowerCase() === "approved" && reg?.payment?.lastEventAt
+      ? new Date(reg.payment.lastEventAt).toLocaleString("es-AR")
+      : "-";
+  const accessCodeLabel = String(reg?.accessCodeUsed || "").trim() || "-";
+
   if (!reg) {
     return (
       <Layout title="Detalle inscripción">
@@ -240,6 +246,9 @@ export default function Registro() {
             </div>
             <div style={{ opacity: 0.85, marginBottom: 10 }}>
               <b>Inicio inscripcion:</b> {startedAtLabel} &nbsp;|&nbsp; <b>Nro operacion MP:</b> {mpOperationNumber}
+            </div>
+            <div style={{ opacity: 0.85, marginBottom: 10 }}>
+              <b>Fecha de pago:</b> {paidAtLabel} &nbsp;|&nbsp; <b>Codigo usado:</b> {accessCodeLabel}
             </div>
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

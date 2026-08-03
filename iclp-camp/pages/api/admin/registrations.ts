@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Traemos lo necesario y filtramos en memoria (simple y suficiente para tu volumen actual).
   const regs = await Registration.find({})
     .sort({ createdAt: -1 })
-    .select("primary step1 attendees extras payment createdAt extrasDelivered")
+    .select("primary step1 attendees extras payment createdAt extrasDelivered accessCodeUsed")
     .lean();
 
   const normalized = regs.map((r: any) => {
