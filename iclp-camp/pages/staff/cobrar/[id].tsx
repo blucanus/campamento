@@ -26,8 +26,13 @@ export default function Cobrar() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [deviceId, setDeviceId] = useState("");
   const [qr, setQr] = useState("");
+  const [interopQr, setInteropQr] = useState("");
   const [msg, setMsg] = useState("");
   const [charging, setCharging] = useState(false);
+  const [busyQr, setBusyQr] = useState(false);
+
+  const device = devices.find((d) => d.id === deviceId);
+  const needsPdv = Boolean(device && device.operating_mode && device.operating_mode !== "PDV");
 
   const approved = String(reg?.payment?.status || "").toLowerCase() === "approved";
   const payLink = String(reg?.payment?.initPoint || "");
@@ -117,6 +122,47 @@ export default function Cobrar() {
     }
   }
 
+  // QR que tambien leen Cuenta DNI, MODO y otras billeteras.
+  async function generateInteropQr() {
+    setBusyQr(true);
+    setMsg("");
+    try {
+      const r = await fetch("/api/staff/qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: id })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(String(j.error || "No se pudo generar el QR"));
+
+      const QRCode = await import("qrcode");
+      setInteropQr(await QRCode.toDataURL(String(j.qrData || ""), { width: 320, margin: 1 }));
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "No se pudo generar el QR");
+    } finally {
+      setBusyQr(false);
+    }
+  }
+
+  async function setPdvMode() {
+    setMsg("");
+    try {
+      const r = await fetch("/api/staff/point", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pdv", deviceId })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(String(j.error || "No se pudo cambiar el modo"));
+      setDevices((prev) =>
+        prev.map((d) => (d.id === deviceId ? { ...d, operating_mode: "PDV" } : d))
+      );
+      setMsg("Posnet en modo PDV. Ya podés cobrar.");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "No se pudo cambiar el modo");
+    }
+  }
+
   async function chargeOnPoint() {
     if (!deviceId) {
       setMsg("No hay ningún posnet disponible.");
@@ -185,8 +231,26 @@ export default function Cobrar() {
       ) : (
         <div className="grid2" style={{ marginTop: 12 }}>
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>📱 Que pague con el celular</h3>
-            {qr ? (
+            <h3 style={{ marginTop: 0 }}>
+              {interopQr ? "📱 QR para cualquier billetera" : "📱 Que pague con el celular"}
+            </h3>
+
+            {interopQr ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={interopQr}
+                  alt="QR interoperable"
+                  style={{ width: "100%", maxWidth: 320, borderRadius: 12 }}
+                />
+                <p style={{ opacity: 0.8 }}>
+                  Lo leen Mercado Pago, Cuenta DNI, MODO y otras billeteras con QR interoperable.
+                </p>
+                <button className="btn secondary" type="button" onClick={() => setInteropQr("")}>
+                  Volver al QR de Mercado Pago
+                </button>
+              </>
+            ) : qr ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qr} alt="QR de pago" style={{ width: "100%", maxWidth: 320, borderRadius: 12 }} />
@@ -208,6 +272,14 @@ export default function Cobrar() {
                   >
                     WhatsApp
                   </a>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={generateInteropQr}
+                    disabled={busyQr}
+                  >
+                    {busyQr ? "Generando..." : "QR para otras billeteras"}
+                  </button>
                 </div>
               </>
             ) : (
@@ -231,16 +303,34 @@ export default function Cobrar() {
                 <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
                   {devices.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.id}
+                      {d.id} {d.operating_mode ? `(${d.operating_mode})` : ""}
                     </option>
                   ))}
                 </select>
 
-                <div style={{ marginTop: 10 }}>
-                  <button className="btn" type="button" onClick={chargeOnPoint} disabled={charging}>
+                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={chargeOnPoint}
+                    disabled={charging || needsPdv}
+                  >
                     {charging ? "Enviando..." : `Enviar ${money(total)} al posnet`}
                   </button>
+
+                  {needsPdv ? (
+                    <button className="btn secondary" type="button" onClick={setPdvMode}>
+                      Poner en modo PDV
+                    </button>
+                  ) : null}
                 </div>
+
+                {needsPdv ? (
+                  <p style={{ opacity: 0.8, marginBottom: 0 }}>
+                    Este posnet está en modo {device?.operating_mode}. Pasalo a PDV para cobrar
+                    desde acá.
+                  </p>
+                ) : null}
               </>
             ) : (
               <p style={{ opacity: 0.8 }}>

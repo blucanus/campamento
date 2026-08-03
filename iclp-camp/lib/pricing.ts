@@ -1,4 +1,22 @@
 import { env } from "@/lib/env";
+import { getCampEdition } from "@/lib/campEdition";
+
+type ExtraLike = { qty?: number; unitPrice?: number };
+
+/** Total a cobrar de una inscripcion ya guardada: campa + productos. Solo server. */
+export async function registrationTotalARS(reg: {
+  step1?: unknown;
+  attendees?: unknown[];
+  extras?: ExtraLike[];
+}) {
+  const camp = await getCampEdition();
+  const base = computeTotalARS(reg.step1, reg.attendees || [], camp.priceFull);
+  const extras = (reg.extras || []).reduce(
+    (acc: number, x: ExtraLike) => acc + Number(x?.unitPrice || 0) * Number(x?.qty || 0),
+    0
+  );
+  return Number(base.campTotal || 0) + extras;
+}
 
 export function computeTotalARS(step1: any, attendees: any[], priceFull?: number) {
   const campFull = Number(priceFull || env.CAMP_PRICE_FULL || 0);

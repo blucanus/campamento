@@ -3,26 +3,17 @@ import { connectDB } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { env } from "@/lib/env";
-import { computeTotalARS } from "@/lib/pricing";
+import { registrationTotalARS } from "@/lib/pricing";
 import { getCampEdition } from "@/lib/campEdition";
-import { createPointPaymentIntent, listPointDevices } from "@/lib/mercadopago";
+import {
+  createPointPaymentIntent,
+  listPointDevices,
+  setPointOperatingMode
+} from "@/lib/mercadopago";
 import { Registration } from "@/models/Registration";
-
-type ExtraLike = { qty?: number; unitPrice?: number };
 
 function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : "Error con Mercado Pago Point";
-}
-
-// Mismo calculo que el checkout: campa (con el precio de la edicion) + productos.
-async function totalOf(reg: { step1?: unknown; attendees?: unknown[]; extras?: ExtraLike[] }) {
-  const camp = await getCampEdition();
-  const base = computeTotalARS(reg.step1, reg.attendees || [], camp.priceFull);
-  const extrasTotal = (reg.extras || []).reduce(
-    (acc: number, x: ExtraLike) => acc + Number(x?.unitPrice || 0) * Number(x?.qty || 0),
-    0
-  );
-  return Number(base.campTotal || 0) + extrasTotal;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -38,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (regId) {
       await connectDB();
       const reg = await Registration.findById(regId).lean();
-      if (reg) total = await totalOf(reg);
+      if (reg) total = await registrationTotalARS(reg);
     }
 
     try {
@@ -53,6 +44,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const registrationId = String(req.body?.registrationId || "").trim();
   const deviceId = String(req.body?.deviceId || "").trim();
+  const action = String(req.body?.action || "charge");
+
+  // Pasar el posnet a modo PDV (sin eso no acepta cobros de la integracion)
+  if (action === "pdv") {
+    if (!deviceId) return res.status(400).json({ error: "Falta el posnet." });
+    try {
+      const device = await setPointOperatingMode(deviceId, "PDV");
+      return res.status(200).json({ ok: true, device });
+    } catch (e: unknown) {
+      return res.status(502).json({ error: errorMessage(e) });
+    }
+  }
+
   if (!registrationId || !deviceId) {
     return res.status(400).json({ error: "Falta la inscripción o el posnet." });
   }
@@ -66,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const camp = await getCampEdition();
-  const total = await totalOf(reg);
+  const total = await registrationTotalARS(reg);
 
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
 

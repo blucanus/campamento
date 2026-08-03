@@ -64,6 +64,78 @@ export async function createPreference(params: CreatePreferenceMulti | CreatePre
   return r.json() as Promise<{ id: string; init_point: string; sandbox_init_point?: string }>;
 }
 
+// ---- QR interoperable (Mercado Pago, Cuenta DNI, MODO, etc.) ----
+
+async function mpApi(path: string, init?: RequestInit) {
+  const r = await fetch(`https://api.mercadopago.com${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`,
+      ...(init?.headers || {})
+    }
+  });
+
+  const text = await r.text();
+  if (!r.ok) throw new Error(`MP ${path}: ${text || r.status}`);
+  return text ? JSON.parse(text) : {};
+}
+
+export async function getCollectorId(): Promise<string> {
+  const me = await mpApi("/users/me");
+  return String(me?.id || "");
+}
+
+/** Busca la caja (POS) de la web y, si no existe, la crea. */
+export async function getOrCreateQrPos(externalId: string) {
+  const found = await mpApi(`/pos?external_id=${encodeURIComponent(externalId)}`);
+  const list = found?.results;
+  if (Array.isArray(list) && list.length) return list[0];
+
+  return mpApi("/pos", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Campamento ICLP",
+      fixed_amount: true,
+      external_id: externalId
+    })
+  });
+}
+
+/** Genera el QR dinamico con el monto exacto de esa inscripcion. */
+export async function createQrOrder(params: {
+  collectorId: string;
+  externalPosId: string;
+  externalReference: string;
+  title: string;
+  totalAmount: number;
+  notificationUrl: string;
+}) {
+  const path =
+    `/instore/orders/qr/seller/collectors/${encodeURIComponent(params.collectorId)}` +
+    `/pos/${encodeURIComponent(params.externalPosId)}/qrs`;
+
+  return mpApi(path, {
+    method: "PUT",
+    body: JSON.stringify({
+      external_reference: params.externalReference,
+      title: params.title,
+      description: params.title,
+      notification_url: params.notificationUrl,
+      total_amount: params.totalAmount,
+      items: [
+        {
+          title: params.title,
+          unit_price: params.totalAmount,
+          quantity: 1,
+          unit_measure: "unit",
+          total_amount: params.totalAmount
+        }
+      ]
+    })
+  }) as Promise<{ qr_data?: string; in_store_order_id?: string }>;
+}
+
 // ---- Point (posnet) ----
 // Requiere un Point Smart vinculado a la misma cuenta y en modo PDV.
 
@@ -87,6 +159,14 @@ async function mpPoint(path: string, init?: RequestInit) {
 export async function listPointDevices(): Promise<PointDevice[]> {
   const j = await mpPoint("/devices?limit=50");
   return Array.isArray(j?.devices) ? j.devices : [];
+}
+
+/** El posnet tiene que estar en modo PDV para aceptar cobros de la integracion. */
+export async function setPointOperatingMode(deviceId: string, mode: "PDV" | "STANDALONE") {
+  return mpPoint(`/devices/${encodeURIComponent(deviceId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ operating_mode: mode })
+  }) as Promise<PointDevice>;
 }
 
 /** Manda el cobro al posnet. El monto va en centavos. */
