@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { Registration } from "@/models/Registration";
 import { MerchOrder } from "@/models/MerchOrder";
@@ -97,7 +97,7 @@ async function fetchPaymentsByReference(externalReference: string): Promise<Paym
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const admin = requireAdmin(req);
+    const admin = requireStaff(req);
     if (!admin) return res.status(401).json({ error: "Unauthorized" });
     if (req.method !== "POST") return res.status(405).end();
 

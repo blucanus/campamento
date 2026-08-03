@@ -1,12 +1,12 @@
 import mongoose, { Schema, models, model } from "mongoose";
 
-export type UserRole = "superadmin" | "admin";
+export type UserRole = "superadmin" | "admin" | "staff";
 
 const UserSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, index: true },
     name: { type: String, default: "" },
-    role: { type: String, enum: ["superadmin", "admin"], default: "admin", index: true },
+    role: { type: String, enum: ["superadmin", "admin", "staff"], default: "admin", index: true },
     passwordHash: { type: String, required: true },
 
     isActive: { type: Boolean, default: true, index: true },

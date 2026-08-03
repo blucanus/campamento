@@ -22,7 +22,7 @@ type RegistrationRow = {
   attendees?: unknown[];
   hasExtras?: boolean;
   extrasDelivered?: boolean;
-  payment?: { status?: string; lastEventAt?: string };
+  payment?: { status?: string; lastEventAt?: string; initPoint?: string };
   createdAt?: string;
   accessCodeUsed?: string;
 };
@@ -318,6 +318,19 @@ export default function Admin() {
     loadSettings();
   }, []);
 
+  // El staff no entra al admin: va a su pantalla de secretaría.
+  useEffect(() => {
+    (async () => {
+      const r = await fetch("/api/admin/me");
+      if (r.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const j = await r.json().catch(() => ({}));
+      if (j?.admin?.role === "staff") window.location.href = "/staff";
+    })();
+  }, []);
+
   return (
     <Layout title="Admin">
       <div className="card">
@@ -331,6 +344,7 @@ export default function Admin() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <Link className="btn" href="/inscripcion/paso-1?admin=1">➕ Inscribir</Link>
+            <Link className="btn secondary" href="/staff">💳 Secretaría</Link>
             <Link className="btn" href="/merch">➕ Comprar MERCH</Link>
             <Link className="btn secondary" href="/api/admin/export?format=csv">CSV</Link>
             <Link className="btn secondary" href="/api/admin/export?format=xlsx">Excel</Link>
@@ -645,7 +659,18 @@ export default function Admin() {
                     </Badge>
                   </td>
                   <td>
-                    <a className="btn secondary" href={`/admin/registro/${r._id}`}>Ver</a>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <a className="btn secondary" href={`/admin/registro/${r._id}`}>Ver</a>
+                      {r.payment?.initPoint && String(r.payment?.status || "").toLowerCase() !== "approved" ? (
+                        <button
+                          className="btn secondary"
+                          type="button"
+                          onClick={() => copyText(String(r.payment?.initPoint || ""))}
+                        >
+                          📋 Pago
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}

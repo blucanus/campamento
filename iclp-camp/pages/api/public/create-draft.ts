@@ -5,6 +5,7 @@ import {
   checkRegistrationAccess,
   consumeRegistrationAccessCode
 } from "@/lib/registrationAccess";
+import { requireStaff } from "@/lib/auth";
 
 function normalizePrimary(step1: any) {
   const first = String(step1?.primaryFirstName || step1?.firstName || "").trim();
@@ -49,7 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await connectDB();
 
-  const access = await checkRegistrationAccess({ code: accessCode });
+  const access = await checkRegistrationAccess({
+    code: accessCode,
+    staff: Boolean(requireStaff(req))
+  });
   if (!access.allowed) {
     return res.status(403).json({ error: access.reason || "Inscripciones cerradas." });
   }

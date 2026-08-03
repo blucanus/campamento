@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { checkRegistrationAccess } from "@/lib/registrationAccess";
+import { requireStaff } from "@/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
@@ -9,7 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const code = String(req.query.code || "");
   const regId = String(req.query.regId || "");
-  const check = await checkRegistrationAccess({ code, regId });
+  const check = await checkRegistrationAccess({
+    code,
+    regId,
+    staff: Boolean(requireStaff(req))
+  });
 
   return res.status(200).json({
     allowed: check.allowed,

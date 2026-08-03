@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const admin = requireAdmin(req);
+  const admin = requireStaff(req);
   if (!admin) return res.status(401).json({ error: "Unauthorized" });
 
   const id = String(req.query.id || "");

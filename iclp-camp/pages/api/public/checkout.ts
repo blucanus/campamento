@@ -12,6 +12,7 @@ import {
 } from "@/lib/registrationAccess";
 import { getCampEdition } from "@/lib/campEdition";
 import { saveCampers } from "@/lib/campers";
+import { requireStaff } from "@/lib/auth";
 
 type CartItem = { variantId: string; qty: number };
 
@@ -60,7 +61,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectDB();
 
   const camp = await getCampEdition();
-  const access = await checkRegistrationAccess({ code: accessCode, regId });
+  const access = await checkRegistrationAccess({
+    code: accessCode,
+    regId,
+    staff: Boolean(requireStaff(req))
+  });
   if (!access.allowed) {
     return res.status(403).json({ error: access.reason || "Inscripciones cerradas." });
   }

@@ -57,6 +57,14 @@ export function requireAdmin(req: NextApiRequest): TokenPayload | null {
   return u;
 }
 
+/** Secretaria/staff: inscribe y cobra, pero no toca configuracion ni borra nada. */
+export function requireStaff(req: NextApiRequest): TokenPayload | null {
+  const u = getAdmin(req);
+  if (!u) return null;
+  if (u.role !== "staff" && u.role !== "admin" && u.role !== "superadmin") return null;
+  return u;
+}
+
 export function requireSuperAdmin(req: NextApiRequest): TokenPayload | null {
   const u = getAdmin(req);
   if (!u) return null;

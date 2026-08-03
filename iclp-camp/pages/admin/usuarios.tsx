@@ -7,7 +7,7 @@ type UserRow = {
   id: string;
   email: string;
   name: string;
-  role: "superadmin" | "admin";
+  role: "superadmin" | "admin" | "staff";
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -26,7 +26,7 @@ export default function AdminUsers() {
   // create form
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"admin" | "superadmin">("admin");
+  const [role, setRole] = useState<"admin" | "superadmin" | "staff">("admin");
   const [pass, setPass] = useState("");
 
   async function load() {
@@ -143,6 +143,7 @@ export default function AdminUsers() {
                 <select value={role} onChange={(e) => setRole(e.target.value as any)}>
                   <option value="admin">Admin</option>
                   <option value="superadmin">Super Admin</option>
+                  <option value="staff">Staff / Secretaría</option>
                 </select>
               </div>
               <div>
@@ -220,6 +221,7 @@ function UserRowComp({
         <select value={role} disabled={!canEdit} onChange={(e) => setRole(e.target.value as any)}>
           <option value="admin">admin</option>
           <option value="superadmin">superadmin</option>
+          <option value="staff">staff</option>
         </select>
       </td>
       <td>

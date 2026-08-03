@@ -5,6 +5,13 @@ import bcrypt from "bcryptjs";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 
+const ROLES = ["superadmin", "admin", "staff"];
+
+function cleanRoleOf(role: unknown) {
+  const r = String(role || "");
+  return ROLES.includes(r) ? r : "admin";
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const admin = requireAdmin(req);
   if (!admin) return res.status(401).json({ error: "Unauthorized" });
@@ -41,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mail = String(email || "").toLowerCase().trim();
     if (!mail || !String(pass || "")) return res.status(400).json({ error: "Email y clave son requeridos" });
 
-    const cleanRole = role === "superadmin" ? "superadmin" : "admin";
+    const cleanRole = cleanRoleOf(role);
 
     const exists = await User.findOne({ email: mail });
     if (exists) return res.status(400).json({ error: "Ya existe un usuario con ese email" });
@@ -86,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     if (typeof name !== "undefined") user.name = String(name || "").trim();
-    if (typeof role !== "undefined") user.role = role === "superadmin" ? "superadmin" : "admin";
+    if (typeof role !== "undefined") user.role = cleanRoleOf(role);
     if (typeof isActive !== "undefined") user.isActive = !!isActive;
 
     if (newPass) {

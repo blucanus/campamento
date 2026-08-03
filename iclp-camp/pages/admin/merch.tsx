@@ -29,6 +29,16 @@ function AdminTabs({ active }: { active: "inscripciones" | "reportes" | "merch" 
   );
 }
 
+async function copyPay(link: string) {
+  if (!link) return;
+  try {
+    await navigator.clipboard.writeText(link);
+    alert("📋 Link de pago copiado");
+  } catch {
+    window.prompt("Copiá el link:", link);
+  }
+}
+
 export default function AdminMerch() {
   const [data, setData] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -132,6 +142,15 @@ export default function AdminMerch() {
                   <td>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <a className="btn secondary" href={`/admin/merch/${o._id}`}>Ver</a>
+                      {o.payment?.initPoint && String(o.payment?.status || "").toLowerCase() !== "approved" ? (
+                        <button
+                          className="btn secondary"
+                          type="button"
+                          onClick={() => copyPay(String(o.payment?.initPoint || ""))}
+                        >
+                          📋 Pago
+                        </button>
+                      ) : null}
                       <button
                         className="btn secondary"
                         type="button"

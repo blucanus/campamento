@@ -2,7 +2,7 @@ import { Registration } from "@/models/Registration";
 import { RegistrationAccessCode } from "@/models/RegistrationAccessCode";
 import { RegistrationControl } from "@/models/RegistrationControl";
 
-type AccessSource = "open" | "existing_reg" | "invite_code" | "denied";
+type AccessSource = "open" | "existing_reg" | "invite_code" | "staff" | "denied";
 
 export type AccessCheckResult = {
   allowed: boolean;
@@ -45,11 +45,17 @@ export async function getOrCreateRegistrationControl() {
 export async function checkRegistrationAccess(params: {
   code?: unknown;
   regId?: unknown;
+  staff?: boolean;
 }): Promise<AccessCheckResult> {
   const control = await getOrCreateRegistrationControl();
   const registrationsOpen = Boolean(control.registrationsOpen);
   const code = normalizeCode(params.code);
   const regId = String(params.regId || "").trim();
+
+  // Secretaría/staff logueado inscribe aunque estén cerradas.
+  if (params.staff) {
+    return { allowed: true, registrationsOpen, source: "staff", code };
+  }
 
   if (registrationsOpen) {
     return { allowed: true, registrationsOpen: true, source: "open", code };

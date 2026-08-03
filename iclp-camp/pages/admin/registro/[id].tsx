@@ -294,6 +294,12 @@ export default function Registro() {
               </button>
             ) : null}
 
+            {String(reg?.payment?.status || "").toLowerCase() !== "approved" ? (
+              <a className="btn secondary" href={`/staff/cobrar/${reg._id}`}>
+                💳 Cobrar (QR / posnet)
+              </a>
+            ) : null}
+
             {hasExtras ? (
               <button className="btn" type="button" onClick={toggleDelivered} disabled={savingDelivery}>
                 {savingDelivery ? "Guardando..." : reg.extrasDelivered ? "Marcar NO entregadas" : "Marcar entregadas"}

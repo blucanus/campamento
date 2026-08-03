@@ -16,12 +16,12 @@ export default function Login() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, pass })
     });
+    const j = await r.json().catch(() => ({}));
     if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
       setErr(j.error || "Error");
       return;
     }
-    router.push("/admin");
+    router.push(j.role === "staff" ? "/staff" : "/admin");
   }
 
   return (

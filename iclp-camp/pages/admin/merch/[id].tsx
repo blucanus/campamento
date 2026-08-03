@@ -177,6 +177,25 @@ export default function AdminMerchDetail() {
               {checkingPayment ? "Comprobando..." : "Comprobar estado"}
             </button>
 
+            {order.payment?.initPoint &&
+            String(order.payment?.status || "").toLowerCase() !== "approved" ? (
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={async () => {
+                  const link = String(order.payment?.initPoint || "");
+                  try {
+                    await navigator.clipboard.writeText(link);
+                    alert("📋 Link de pago copiado");
+                  } catch {
+                    window.prompt("Copiá el link:", link);
+                  }
+                }}
+              >
+                📋 Copiar link de pago
+              </button>
+            ) : null}
+
             <button className="btn" type="button" onClick={toggleDelivered} disabled={saving}>
               {saving ? "Guardando..." : order.delivered ? "Marcar NO entregado" : "Marcar entregado"}
             </button>
