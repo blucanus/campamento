@@ -45,11 +45,19 @@ export default function Staff() {
   }, [load]);
 
   return (
-    <Layout title="Secretaría">
+    <Layout title="Staff">
       <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center"
+          }}
+        >
           <div>
-            <h2 style={{ marginBottom: 4 }}>Secretaría</h2>
+            <h2 style={{ marginBottom: 4 }}>Staff</h2>
             <div style={{ opacity: 0.75, fontSize: 13 }}>
               {loading ? "Cargando..." : `${data.length} inscripciones`}
             </div>

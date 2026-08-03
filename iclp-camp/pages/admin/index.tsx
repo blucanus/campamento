@@ -15,7 +15,6 @@ type InviteRow = {
   lastUsedAt: string | null;
   link: string;
 };
-type TabKey = "inscripciones" | "reportes" | "merch";
 type RegistrationRow = {
   _id: string;
   primary?: { name?: string; phone?: string };
@@ -52,52 +51,6 @@ function fmtDate(value?: string | null) {
   if (!value) return "—";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("es-AR");
-}
-
-function AdminTabs({ active }: { active: TabKey }) {
-  return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-      <Link
-        href="/admin"
-        style={{
-          padding: "8px 10px",
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: active === "inscripciones" ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)",
-          fontWeight: 800,
-          fontSize: 13
-        }}
-      >
-        Inscripciones
-      </Link>
-      <Link
-        href="/admin/merch"
-        style={{
-          padding: "8px 10px",
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: active === "merch" ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)",
-          fontWeight: 800,
-          fontSize: 13
-        }}
-      >
-        Merch
-      </Link>
-      <Link
-        href="/admin/reportes"
-        style={{
-          padding: "8px 10px",
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: active === "reportes" ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)",
-          fontWeight: 800,
-          fontSize: 13
-        }}
-      >
-        Reportes
-      </Link>
-    </div>
-  );
 }
 
 export default function Admin() {
@@ -344,16 +297,14 @@ export default function Admin() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <Link className="btn" href="/inscripcion/paso-1?admin=1">➕ Inscribir</Link>
-            <Link className="btn secondary" href="/staff">💳 Secretaría</Link>
+            <Link className="btn secondary" href="/staff">💳 Staff</Link>
             <Link className="btn" href="/merch">➕ Comprar MERCH</Link>
             <Link className="btn secondary" href="/api/admin/export?format=csv">CSV</Link>
             <Link className="btn secondary" href="/api/admin/export?format=xlsx">Excel</Link>
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <AdminTabs active="inscripciones" />
-
+        <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input
               placeholder="Buscar por nombre, email, tel o DNI..."

@@ -4,31 +4,6 @@ import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
-function AdminTabsMini() {
-  const Item = ({ href, label }: any) => (
-    <a
-      href={href}
-      style={{
-        padding: "8px 10px",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.14)",
-        background: "rgba(255,255,255,0.06)",
-        fontWeight: 800,
-        fontSize: 13
-      }}
-    >
-      {label}
-    </a>
-  );
-  return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-      <Item href="/admin" label="Inscripciones" />
-      <Item href="/admin/merch" label="Merch" />
-      <Item href="/admin/reportes" label="Reportes" />
-    </div>
-  );
-}
-
 export default function AdminMerchDetail() {
   const { query, back } = useRouter();
   const id = String(query.id || "");
@@ -162,8 +137,6 @@ export default function AdminMerchDetail() {
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <AdminTabsMini />
-
             <button className="btn secondary" type="button" onClick={() => back()}>
               ← Volver
             </button>

@@ -3,32 +3,6 @@ import Badge from "@/components/Badge";
 import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import { useEffect, useState } from "react";
 
-function AdminTabs({ active }: { active: "inscripciones" | "reportes" | "merch" }) {
-  const Item = ({ href, label, keyName }: any) => (
-    <a
-      href={href}
-      style={{
-        padding: "8px 10px",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.14)",
-        background: active === keyName ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)",
-        fontWeight: 800,
-        fontSize: 13
-      }}
-    >
-      {label}
-    </a>
-  );
-
-  return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-      <Item href="/admin" label="Inscripciones" keyName="inscripciones" />
-      <Item href="/admin/merch" label="Merch" keyName="merch" />
-      <Item href="/admin/reportes" label="Reportes" keyName="reportes" />
-    </div>
-  );
-}
-
 async function copyPay(link: string) {
   if (!link) return;
   try {
@@ -92,10 +66,7 @@ export default function AdminMerch() {
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <AdminTabs active="merch" />
-
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input
               placeholder="Buscar por nombre, email o SKU…"
               value={q}
