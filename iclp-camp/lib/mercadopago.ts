@@ -77,8 +77,22 @@ async function mpApi(path: string, init?: RequestInit) {
   });
 
   const text = await r.text();
-  if (!r.ok) throw new Error(`MP ${path}: ${text || r.status}`);
+  if (!r.ok) {
+    const err = new Error(`MP ${path}: ${text || r.status}`) as Error & { status?: number };
+    err.status = r.status;
+    throw err;
+  }
   return text ? JSON.parse(text) : {};
+}
+
+/** Igual que mpApi pero un 404 significa "no existe todavia", no un error. */
+async function mpFind(path: string) {
+  try {
+    return await mpApi(path);
+  } catch (e: unknown) {
+    if ((e as { status?: number })?.status === 404) return null;
+    throw e;
+  }
 }
 
 export async function getCollectorId(): Promise<string> {
@@ -110,7 +124,7 @@ const QR_STORE_LOCATION = {
 export async function getOrCreateQrStore(collectorId: string, externalId: string) {
   const base = `/users/${encodeURIComponent(collectorId)}/stores`;
 
-  const found = await mpApi(`${base}/search?external_id=${encodeURIComponent(externalId)}`);
+  const found = await mpFind(`${base}/search?external_id=${encodeURIComponent(externalId)}`);
   const list = found?.results;
   if (Array.isArray(list) && list.length) return list[0];
 
@@ -126,7 +140,7 @@ export async function getOrCreateQrStore(collectorId: string, externalId: string
 
 /** Busca la caja (POS) de la web y, si no existe, la crea dentro de la sucursal. */
 export async function getOrCreateQrPos(externalId: string, storeId: string) {
-  const found = await mpApi(`/pos?external_id=${encodeURIComponent(externalId)}`);
+  const found = await mpFind(`/pos?external_id=${encodeURIComponent(externalId)}`);
   const list = found?.results;
   if (Array.isArray(list) && list.length) return list[0];
 
