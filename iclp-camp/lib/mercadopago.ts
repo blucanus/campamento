@@ -86,6 +86,19 @@ export async function getCollectorId(): Promise<string> {
   return String(me?.id || "");
 }
 
+// Como figura la sucursal/caja dentro de Mercado Pago.
+const QR_STORE_NAME = "Campamento";
+
+// Domicilio de la sucursal (lo pide MP). Es la iglesia, no el predio del campa.
+const QR_STORE_LOCATION = {
+  street_number: "1",
+  street_name: "Iglesia",
+  city_name: "La Plata",
+  state_name: "Buenos Aires",
+  latitude: -34.921453,
+  longitude: -57.954531
+};
+
 /**
  * Busca la sucursal de la web y, si no existe, la crea.
  * Mercado Pago no deja crear una caja suelta: tiene que colgar de una sucursal.
@@ -100,16 +113,9 @@ export async function getOrCreateQrStore(collectorId: string, externalId: string
   return mpApi(base, {
     method: "POST",
     body: JSON.stringify({
-      name: "Campamento ICLP",
+      name: QR_STORE_NAME,
       external_id: externalId,
-      location: {
-        street_number: "1",
-        street_name: "Campamento Elim",
-        city_name: "Veronica",
-        state_name: "Buenos Aires",
-        latitude: -35.366368,
-        longitude: -57.339375
-      }
+      location: QR_STORE_LOCATION
     })
   });
 }
@@ -123,7 +129,7 @@ export async function getOrCreateQrPos(externalId: string, storeId: string) {
   return mpApi("/pos", {
     method: "POST",
     body: JSON.stringify({
-      name: "Campamento ICLP",
+      name: QR_STORE_NAME,
       fixed_amount: true,
       external_id: externalId,
       store_id: storeId
