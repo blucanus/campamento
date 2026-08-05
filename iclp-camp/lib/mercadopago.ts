@@ -67,11 +67,15 @@ export async function createPreference(params: CreatePreferenceMulti | CreatePre
 // ---- QR interoperable (Mercado Pago, Cuenta DNI, MODO, etc.) ----
 
 async function mpApi(path: string, init?: RequestInit) {
+  // El QR presencial suele vivir en otra aplicacion de MP (con permiso de pagos
+  // presenciales). Si no hay token propio, usamos el general.
+  const token = env.MP_QR_ACCESS_TOKEN || env.MP_ACCESS_TOKEN;
+
   const r = await fetch(`https://api.mercadopago.com${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${token}`,
       ...(init?.headers || {})
     }
   });
