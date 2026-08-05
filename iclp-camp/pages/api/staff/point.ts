@@ -4,7 +4,6 @@ import { requireStaff } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { registrationTotalARS } from "@/lib/pricing";
-import { getCampEdition } from "@/lib/campEdition";
 import {
   createPointPaymentIntent,
   listPointDevices,
@@ -69,7 +68,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Esta inscripción ya está paga." });
   }
 
-  const camp = await getCampEdition();
   const total = await registrationTotalARS(reg);
 
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
@@ -79,7 +77,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       deviceId,
       amountARS: total,
       externalReference: registrationId,
-      description: `Campamento ICLP ${camp.edition}`
+      // El posnet solo acepta alfanumerico en el ticket, sin guiones.
+      ticketNumber: `ICLP${registrationId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`
     });
 
     await auditLog({

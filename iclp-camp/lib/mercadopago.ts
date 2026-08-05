@@ -198,6 +198,22 @@ export async function createQrOrder(params: {
 
 export type PointDevice = { id: string; operating_mode?: string; pos_id?: number };
 
+/** Deja el error de MP en algo legible para el staff (viene como JSON). */
+function pointError(status: number, text: string) {
+  let msg = text;
+  try {
+    const j = JSON.parse(text);
+    msg = j?.message || j?.error || text;
+  } catch {
+    // a veces contesta texto plano
+  }
+  const err = new Error(
+    msg ? `Mercado Pago Point: ${msg}` : `Mercado Pago Point respondió ${status}`
+  ) as Error & { status?: number };
+  err.status = status;
+  return err;
+}
+
 async function mpPoint(path: string, init?: RequestInit) {
   const r = await fetch(`https://api.mercadopago.com/point/integration-api${path}`, {
     ...init,
@@ -209,7 +225,7 @@ async function mpPoint(path: string, init?: RequestInit) {
   });
 
   const text = await r.text();
-  if (!r.ok) throw new Error(`MP Point ${path}: ${text || r.status}`);
+  if (!r.ok) throw pointError(r.status, text);
   return text ? JSON.parse(text) : {};
 }
 
@@ -226,22 +242,32 @@ export async function setPointOperatingMode(deviceId: string, mode: "PDV" | "STA
   }) as Promise<PointDevice>;
 }
 
-/** Manda el cobro al posnet. El monto va en centavos. */
+/**
+ * Manda el cobro al posnet. El monto va en centavos.
+ *
+ * Ojo: la Point Integration API solo acepta `amount`, `additional_info` y
+ * `payment`. Cualquier campo de mas (por ejemplo `description`) se rechaza con
+ * "Additional property X is not allowed". El texto que se imprime en el ticket
+ * va en `additional_info.ticket_number`.
+ */
 export async function createPointPaymentIntent(params: {
   deviceId: string;
   amountARS: number;
   externalReference: string;
-  description?: string;
+  ticketNumber?: string;
 }) {
+  const additional_info: Record<string, unknown> = {
+    external_reference: params.externalReference,
+    print_on_terminal: true
+  };
+
+  if (params.ticketNumber) additional_info.ticket_number = params.ticketNumber;
+
   return mpPoint(`/devices/${encodeURIComponent(params.deviceId)}/payment-intents`, {
     method: "POST",
     body: JSON.stringify({
       amount: Math.round(params.amountARS * 100),
-      description: params.description || "Campamento ICLP",
-      additional_info: {
-        external_reference: params.externalReference,
-        print_on_terminal: true
-      }
+      additional_info
     })
   }) as Promise<{ id: string; state?: string }>;
 }
