@@ -92,9 +92,11 @@ export const QR_STORE_EXTERNAL_ID = "ICLP";
 const QR_POS_NAME = "CAMP-01";
 
 // Domicilio de la sucursal (lo pide MP). Es la iglesia, no el predio del campa.
+// ponytail: las coordenadas son aproximadas (centro de La Plata); MP las usa solo
+// para el pin del mapa y se ajustan desde el panel si molesta.
 const QR_STORE_LOCATION = {
-  street_number: "1",
-  street_name: "Iglesia",
+  street_number: "1569",
+  street_name: "Calle 24",
   city_name: "La Plata",
   state_name: "Buenos Aires",
   latitude: -34.921453,
