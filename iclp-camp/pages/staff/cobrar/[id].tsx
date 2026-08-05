@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 type Device = { id: string; operating_mode?: string };
 type Reg = {
   _id?: string;
-  primary?: { name?: string; phone?: string; email?: string };
+  primary?: { name?: string; phone?: string; whatsapp?: string; email?: string };
   attendees?: unknown[];
   payment?: { status?: string; initPoint?: string };
 };
@@ -264,13 +264,13 @@ export default function Cobrar() {
                   </a>
                   <a
                     className="btn secondary"
-                    href={`https://wa.me/?text=${encodeURIComponent(
+                    href={`https://wa.me/${reg.primary?.whatsapp || ""}?text=${encodeURIComponent(
                       `Tu inscripción al Campamento ICLP: ${money(total)}. Link de pago: ${payLink}`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    WhatsApp
+                    {reg.primary?.whatsapp ? "Enviar por WhatsApp" : "WhatsApp"}
                   </a>
                   <button
                     className="btn secondary"

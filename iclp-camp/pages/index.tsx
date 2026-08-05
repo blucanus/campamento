@@ -2,22 +2,42 @@ import Image from "next/image";
 import Link from "next/link";
 import { connectDB } from "@/lib/db";
 import { DEFAULT_EDITION, getCampEdition, type CampEdition } from "@/lib/campEdition";
+import { resolveTierPrice } from "@/lib/pure";
 import { env } from "@/lib/env";
 import { MAPS_URL } from "@/lib/maps";
 
-export async function getServerSideProps() {
+type HomeProps = {
+  camp: Pick<CampEdition, "edition" | "datesText" | "priceNote" | "motto">;
+  priceFull: number;
+  priceOneDay: number;
+};
+
+export async function getServerSideProps(): Promise<{ props: HomeProps }> {
   try {
     await connectDB();
-    return { props: { camp: await getCampEdition() } };
+    const camp = await getCampEdition();
+    // En la landing mostramos el precio del tramo vigente hoy.
+    const { price } = resolveTierPrice(camp.pricing, new Date().toISOString().slice(0, 10));
+    return {
+      props: {
+        camp,
+        priceFull: price,
+        priceOneDay: Math.round(price * Number(camp.pricing.oneDayFactor || 0.5))
+      }
+    };
   } catch {
     // Si la DB no responde, la landing igual tiene que verse.
-    return { props: { camp: { ...DEFAULT_EDITION, priceFull: env.CAMP_PRICE_FULL } } };
+    return {
+      props: {
+        camp: DEFAULT_EDITION,
+        priceFull: env.CAMP_PRICE_FULL,
+        priceOneDay: Math.round(env.CAMP_PRICE_FULL / 2)
+      }
+    };
   }
 }
 
-export default function Home({ camp }: { camp: CampEdition }) {
-  const priceFull = Number(camp.priceFull || 0);
-  const priceOneDay = Math.round(priceFull / 2);
+export default function Home({ camp, priceFull, priceOneDay }: HomeProps) {
 
   return (
     <div>

@@ -18,6 +18,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/reportes", label: "Reportes" },
   { href: "/staff", label: "Staff" },
   { href: "/admin/usuarios", label: "Usuarios" },
+  { href: "/admin/campa", label: "Campa" },
   { href: "/checkin", label: "Check-in" }
 ];
 

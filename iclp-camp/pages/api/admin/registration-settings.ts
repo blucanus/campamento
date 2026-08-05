@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { RegistrationAccessCode } from "@/models/RegistrationAccessCode";
 import { Registration } from "@/models/Registration";
@@ -12,13 +12,51 @@ import {
 import { archiveCollectionName, getCampEdition } from "@/lib/campEdition";
 import { auditLog } from "@/lib/audit";
 
+type PricingInput = {
+  tiers?: { label?: string; price?: number; until?: string }[];
+  oneDayFactor?: number;
+  freeUnderAge?: number;
+  ageDiscounts?: { maxAge?: number; percent?: number }[];
+  familyFrom?: number;
+  familyPercent?: number;
+};
+
 type EditionInput = {
   edition?: string;
   datesText?: string;
   priceFull?: number;
   priceNote?: string;
   motto?: string;
+  pricing?: PricingInput;
 };
+
+function clamp(n: unknown, min: number, max: number) {
+  const v = Number(n || 0);
+  if (!Number.isFinite(v)) return min;
+  return Math.min(max, Math.max(min, v));
+}
+
+function cleanPricing(input?: PricingInput) {
+  return {
+    tiers: (Array.isArray(input?.tiers) ? input.tiers : [])
+      .map((t) => ({
+        label: String(t?.label || "").trim(),
+        price: Math.max(0, Number(t?.price || 0)),
+        until: String(t?.until || "").trim()
+      }))
+      .filter((t) => t.price > 0 && /^\d{4}-\d{2}-\d{2}$/.test(t.until)),
+    oneDayFactor: clamp(input?.oneDayFactor ?? 0.5, 0, 1),
+    freeUnderAge: clamp(input?.freeUnderAge ?? 4, 0, 99),
+    ageDiscounts: (Array.isArray(input?.ageDiscounts) ? input.ageDiscounts : [])
+      .map((d) => ({
+        maxAge: clamp(d?.maxAge, 0, 99),
+        percent: clamp(d?.percent, 0, 100)
+      }))
+      .filter((d) => d.maxAge > 0 && d.percent > 0),
+    familyFrom: clamp(input?.familyFrom ?? 5, 0, 20),
+    familyPercent: clamp(input?.familyPercent ?? 10, 0, 100)
+  };
+}
 
 type ActionBody =
   | { action: "set_open"; open: boolean }
@@ -159,6 +197,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (action === "set_edition" || action === "new_edition") {
+    if (!requireSuperAdmin(req)) {
+      return res.status(403).json({ error: "Solo el superadmin puede cambiar los datos del campa." });
+    }
+
     const input = body as EditionInput & { archive?: boolean };
     const edition = String(input.edition || "").trim();
     if (!edition) return res.status(400).json({ error: "Falta el nombre de la edicion (ej: 2027)." });
@@ -183,6 +225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     control.priceFull = Math.max(0, Number(input.priceFull || 0));
     control.priceNote = String(input.priceNote || "").trim();
     control.motto = String(input.motto || "").trim();
+    control.pricing = cleanPricing(input.pricing);
     await control.save();
 
     await auditLog({

@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const camp = await getCampEdition();
   const attendees = Array.isArray(doc.attendees) ? doc.attendees : [];
-  const base = computeTotalARS(doc.step1, attendees, camp.priceFull);
+  const base = computeTotalARS(doc.step1, attendees, camp.pricing);
   const campTotal = Number(base.campTotal || 0);
 
   const extras: ExtraLike[] = Array.isArray(doc.extras) ? doc.extras : [];

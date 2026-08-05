@@ -13,11 +13,13 @@ function howToGetThere() {
 export function mailPending({
   fullName,
   attendeesCount,
-  datesText = CAMP_DATES_TEXT
+  datesText = CAMP_DATES_TEXT,
+  payLink = ""
 }: {
   fullName: string;
   attendeesCount: number;
   datesText?: string;
+  payLink?: string;
 }) {
   return {
     subject: "Inscripción registrada - Pago pendiente | Campamento ICLP",
@@ -30,6 +32,11 @@ export function mailPending({
         <p><b>Importante:</b> antes de la fecha del campamento te va a llegar la información de la <b>habitación</b> y <b>cama</b> asignadas.</p>
         <hr/>
         <p><b>Integrantes cargados:</b> ${attendeesCount}</p>
+        ${
+          payLink
+            ? `<p><a href="${payLink}" target="_blank" rel="noreferrer"><b>Pagar la inscripción</b></a></p>`
+            : ""
+        }
         ${howToGetThere()}
       </div>
     `

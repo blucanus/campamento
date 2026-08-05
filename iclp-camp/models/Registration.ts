@@ -55,6 +55,7 @@ const RegistrationSchema = new Schema(
     primary: {
       name: String,
       phone: String,
+      whatsapp: String, // 549XXXXXXXXXX, listo para wa.me
       email: String
     },
 

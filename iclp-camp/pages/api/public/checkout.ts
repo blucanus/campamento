@@ -13,6 +13,9 @@ import {
 import { getCampEdition } from "@/lib/campEdition";
 import { saveCampers } from "@/lib/campers";
 import { requireStaff } from "@/lib/auth";
+import { normalizePhoneAR } from "@/lib/pure";
+import { sendConfirmationEmail } from "@/lib/notify";
+import { mailPending } from "@/lib/templates";
 
 type CartItem = { variantId: string; qty: number };
 
@@ -42,10 +45,13 @@ function normalizePrimary(step1: any) {
       ""
     ).trim();
 
+  const wa = normalizePhoneAR(phone);
+
   return {
     name: `${first} ${last}`.trim() || "-",
     email: email || "",
-    phone: phone || ""
+    phone: wa.ok ? wa.display : phone,
+    whatsapp: wa.wa
   };
 }
 
@@ -127,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // ✅ pricing base con descuento por 5to+
-  const base = computeTotalARS(step1, safeAttendees, camp.priceFull);
+  const base = computeTotalARS(step1, safeAttendees, camp.pricing);
   const campTotal = Number((base as any).campTotal ?? (base as any).total ?? 0);
 
   // extras
@@ -211,6 +217,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   doc.payment.initPoint = initPoint;
   doc.payment.status = "pending";
   await doc.save();
+
+  // Mail de inscripcion registrada (incluye el mapa). No frena el checkout si falla.
+  try {
+    const m = mailPending({
+      fullName: primary.name,
+      attendeesCount: safeAttendees.length,
+      datesText: camp.datesText,
+      payLink: initPoint
+    });
+    await sendConfirmationEmail(primary.email, m.subject, m.html);
+  } catch (e) {
+    console.error("mailPending", e);
+  }
 
   return res.status(200).json({ regId: String(doc._id), init_point: initPoint });
 }

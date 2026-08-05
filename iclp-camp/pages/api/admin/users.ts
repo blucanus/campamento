@@ -121,5 +121,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ ok: true });
   }
 
+  // ELIMINAR (solo superadmin)
+  if (req.method === "DELETE") {
+    const superAdmin = requireSuperAdmin(req);
+    if (!superAdmin) return res.status(403).json({ error: "Forbidden" });
+
+    const id = String(req.query.id || req.body?.id || "").trim();
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    if (id === superAdmin.id) {
+      return res.status(400).json({ error: "No podés eliminar tu propio usuario." });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "No encontrado" });
+
+    // No dejamos el sistema sin superadmins.
+    if (user.role === "superadmin") {
+      const supers = await User.countDocuments({ role: "superadmin", isActive: true });
+      if (supers <= 1) {
+        return res.status(400).json({ error: "Tiene que quedar al menos un superadmin." });
+      }
+    }
+
+    await User.deleteOne({ _id: id });
+
+    await auditLog({
+      req,
+      actor: superAdmin,
+      action: "user.delete",
+      entity: "User",
+      entityId: id,
+      meta: { email: user.email, role: user.role },
+    });
+
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(405).end();
 }

@@ -41,6 +41,7 @@
     "start": "next start",
     "seed": "node scripts/seed-admin.mjs",
     "pass": "node scripts/set-password.mjs",
+    "import:campers": "node scripts/import-campers.mjs",
     "seed:base": "node scripts/seed-base-products.mjs",
     "lint": "eslint",
     "test": "node --experimental-strip-types scripts/test-pure.ts"

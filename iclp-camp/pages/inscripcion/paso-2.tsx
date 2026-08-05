@@ -34,8 +34,10 @@ export default function Paso2() {
   const router = useRouter();
   const [attendees, setAttendees] = useState<any[]>([]);
   const [step1, setStep1] = useState<any>(null);
+  const [current, setCurrent] = useState(0);
   const [uploading, setUploading] = useState<Record<number, boolean>>({});
   const [uploadErr, setUploadErr] = useState<Record<number, string>>({});
+  const [dniMsg, setDniMsg] = useState<Record<number, string>>({});
 
   // carga inicial
   useEffect(() => {
@@ -118,6 +120,7 @@ export default function Paso2() {
   }, [step1]);
 
   const hasPrimary = useMemo(() => attendees.some((a) => a.isPrimary), [attendees]);
+  const isLast = current >= attendees.length - 1;
 
   function update(i: number, patch: any) {
     setAttendees((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
@@ -144,6 +147,7 @@ export default function Paso2() {
     const next = [...attendees, emptyPerson()];
     setAttendees(next);
     syncCount(next.length);
+    setCurrent(next.length - 1);
   }
 
   function removePerson(i: number) {
@@ -154,29 +158,76 @@ export default function Paso2() {
     }
     setAttendees(next);
     syncCount(next.length);
+    setCurrent((c) => Math.min(c, next.length - 1));
   }
 
-  // Al salir del campo DNI completamos lo que falte con los datos de campas anteriores.
-  async function lookupDni(i: number) {
+  // Los datos se cargan de a una persona por vez.
+  function missingFieldsOf(a: any) {
+    if (!String(a?.firstName || "").trim() || !String(a?.lastName || "").trim()) {
+      return "Completá nombre y apellido.";
+    }
+    if (String(a?.dni || "").replace(/\D/g, "").length < 6) return "Completá el DNI.";
+    if (String(a?.age ?? "").trim() === "") return "Completá la edad.";
+    return "";
+  }
+
+  function goNext() {
+    const problema = missingFieldsOf(attendees[current]);
+    if (problema) {
+      alert(problema);
+      return;
+    }
+    localStorage.setItem("step2", JSON.stringify(attendees));
+    setCurrent((c) => Math.min(c + 1, attendees.length - 1));
+  }
+
+  function goBack() {
+    if (current > 0) {
+      setCurrent((c) => c - 1);
+      return;
+    }
+    back();
+  }
+
+  /**
+   * Completa los datos de esa persona con lo que quedó de campas anteriores.
+   * Con `force` (boton 🔎) pisa lo cargado; al salir del campo solo rellena lo vacio.
+   */
+  async function lookupDni(i: number, force = false) {
     const dni = String(attendees[i]?.dni || "").replace(/\D/g, "");
     if (!dni) return;
 
+    setDniMsg((p) => ({ ...p, [i]: "Buscando..." }));
     try {
       const r = await fetch(`/api/public/camper-lookup?dni=${encodeURIComponent(dni)}`);
-      if (!r.ok) return;
+      if (!r.ok) {
+        setDniMsg((p) => ({ ...p, [i]: force ? "Ese DNI no está en campas anteriores." : "" }));
+        return;
+      }
       const j = await r.json().catch(() => ({}));
       const p = j?.person;
-      if (!p) return;
+      if (!p) {
+        setDniMsg((p2) => ({ ...p2, [i]: "" }));
+        return;
+      }
 
-      const current = attendees[i];
+      const actual = attendees[i];
+      const pick = (valor: string, sugerido: string) =>
+        force ? sugerido || valor : valor || sugerido;
+
       update(i, {
-        firstName: current.firstName || p.firstName || "",
-        lastName: current.lastName || p.lastName || "",
-        age: String(current.age || "") || String(p.age || ""),
-        sex: current.sex || p.sex || "M"
+        firstName: pick(actual.firstName, p.firstName || ""),
+        lastName: pick(actual.lastName, p.lastName || ""),
+        age: pick(String(actual.age || ""), String(p.age || "")),
+        sex: pick(actual.sex, p.sex || "M")
       });
+
+      setDniMsg((p2) => ({
+        ...p2,
+        [i]: `Datos de ${p.firstName || ""} ${p.lastName || ""}`.trim() + " — revisá la edad."
+      }));
     } catch {
-      // si falla, se completa a mano
+      setDniMsg((p) => ({ ...p, [i]: "" }));
     }
   }
 
@@ -324,6 +375,14 @@ export default function Paso2() {
     e.preventDefault();
     if (!hasPrimary) setPrimary(0);
 
+    // Puede haber saltado entre personas: revisamos todas, no solo la que se ve.
+    const incompleta = attendees.findIndex((a) => missingFieldsOf(a));
+    if (incompleta >= 0) {
+      setCurrent(incompleta);
+      alert(`Persona ${incompleta + 1}: ${missingFieldsOf(attendees[incompleta])}`);
+      return;
+    }
+
     // Normalizamos edades
     const normalized = attendees.map((a) => ({
       ...a,
@@ -373,13 +432,45 @@ export default function Paso2() {
           </div>
         </div>
 
+        {attendees.length > 1 ? (
+          <div
+            className="card cardTight"
+            style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}
+          >
+            <b>
+              Persona {current + 1} de {attendees.length}
+            </b>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {attendees.map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setCurrent(idx)}
+                  style={{
+                    padding: "6px 10px",
+                    fontWeight: idx === current ? 900 : 600,
+                    opacity: idx === current ? 1 : 0.7
+                  }}
+                >
+                  {p.firstName?.trim() || `#${idx + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <form onSubmit={submit}>
           {(() => {
             // ✅ calculamos globalmente una vez por render
             const normalized = attendees.map((a) => ({ ...a, age: ageNumOf(a) }));
             const hasAdultPrimary = normalized.some((a) => a.isPrimary && Number(a.age || 0) > 18);
 
-            return attendees.map((a, i) => {
+            const i = current;
+            const a = attendees[i];
+            if (!a) return null;
+
+            return (() => {
               const ageNum = ageNumOf(a);
               const req = computeConsentRequired(ageNum, hasAdultPrimary);
 
@@ -431,15 +522,28 @@ export default function Paso2() {
 
                     <div>
                       <label>DNI</label>
-                      <input
-                        value={a.dni}
-                        required
-                        inputMode="numeric"
-                        placeholder="Sin puntos"
-                        onChange={(e) => update(i, { dni: e.target.value })}
-                        onBlur={() => lookupDni(i)}
-                      />
-                      <div className="fieldHint">Si ya viniste, completamos el resto solo.</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          value={a.dni}
+                          required
+                          inputMode="numeric"
+                          placeholder="Sin puntos"
+                          onChange={(e) => update(i, { dni: e.target.value })}
+                          onBlur={() => lookupDni(i)}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          onClick={() => lookupDni(i, true)}
+                          title="Buscar los datos de este DNI"
+                        >
+                          🔎
+                        </button>
+                      </div>
+                      <div className="fieldHint">
+                        {dniMsg[i] || "Si ya vino a un campa, con el DNI se completan sus datos."}
+                      </div>
                     </div>
 
                     <div>
@@ -536,22 +640,37 @@ export default function Paso2() {
                   ) : null}
                 </div>
               );
-            });
+            })();
           })()}
 
-          <div style={{ marginTop: 12 }}>
-            <button type="button" className="btn secondary" onClick={addPerson}>
-              ➕ Agregar persona
-            </button>
-          </div>
+          {isLast ? (
+            <div className="card cardTight" style={{ marginTop: 12, borderStyle: "dashed" }}>
+              <h3 style={{ marginTop: 0 }}>¿Falta alguien del grupo?</h3>
+              <p style={{ marginTop: 0, opacity: 0.85 }}>
+                Ya cargaste {attendees.length} persona{attendees.length === 1 ? "" : "s"}. Si viene
+                alguien más (pareja, hijos, algún familiar), agregalo acá: si ya vino a un campa, lo
+                buscás por DNI y se completa solo.
+              </p>
+              <button type="button" className="btn secondary" onClick={addPerson}>
+                ➕ Agregar otra persona
+              </button>
+            </div>
+          ) : null}
 
           <div className="stickyBar" style={{ marginTop: 14 }}>
-            <button type="button" className="btn secondary" onClick={back}>
-              ← Volver
+            <button type="button" className="btn secondary" onClick={goBack}>
+              ← {current > 0 ? "Persona anterior" : "Volver"}
             </button>
-            <button className="btn" type="submit">
-              Continuar →
-            </button>
+
+            {isLast ? (
+              <button className="btn" type="submit">
+                Continuar →
+              </button>
+            ) : (
+              <button className="btn" type="button" onClick={goNext}>
+                Siguiente persona →
+              </button>
+            )}
           </div>
         </form>
       </div>

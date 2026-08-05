@@ -25,22 +25,7 @@ type RegistrationRow = {
   createdAt?: string;
   accessCodeUsed?: string;
 };
-type CampEditionForm = {
-  edition: string;
-  datesText: string;
-  priceFull: number;
-  priceNote: string;
-  motto: string;
-};
 type PaymentFilter = "todas" | "approved" | "pending";
-
-const EMPTY_EDITION: CampEditionForm = {
-  edition: "",
-  datesText: "",
-  priceFull: 0,
-  priceNote: "",
-  motto: ""
-};
 
 function getErrorMessage(e: unknown) {
   if (e instanceof Error) return e.message;
@@ -67,8 +52,6 @@ export default function Admin() {
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [lastLink, setLastLink] = useState("");
 
-  const [camp, setCamp] = useState<CampEditionForm>(EMPTY_EDITION);
-  const [savingCamp, setSavingCamp] = useState(false);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todas");
   const [selected, setSelected] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -92,46 +75,6 @@ export default function Admin() {
 
   function toggleSelected(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-
-  async function saveCamp(newEdition: boolean) {
-    if (!camp.edition.trim()) {
-      alert("Poné un nombre de edición (ej: 2027).");
-      return;
-    }
-
-    if (newEdition) {
-      const ok = window.prompt(
-        `Vas a archivar las inscripciones y compras actuales y arrancar la edición "${camp.edition}".\n` +
-          `Los datos de las personas (nombre, DNI, grupo familiar) se conservan.\n\n` +
-          `Escribí NUEVO para confirmar:`
-      );
-      if (String(ok || "").trim().toUpperCase() !== "NUEVO") return;
-    }
-
-    setSavingCamp(true);
-    try {
-      const r = await fetch("/api/admin/registration-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: newEdition ? "new_edition" : "set_edition", ...camp })
-      });
-      const j = await r.json().catch(() => ({} as Record<string, unknown>));
-      if (!r.ok) throw new Error(String(j.error || "No se pudo guardar"));
-
-      if (newEdition) {
-        const arch = (j.archived || {}) as { registrations?: number; merchOrders?: number };
-        alert(
-          `Campamento nuevo listo.\nArchivadas: ${arch.registrations || 0} inscripciones y ${arch.merchOrders || 0} compras de merch.`
-        );
-      }
-      await loadSettings();
-      await load();
-    } catch (e: unknown) {
-      alert(getErrorMessage(e) || "No se pudo guardar");
-    } finally {
-      setSavingCamp(false);
-    }
   }
 
   async function removeRegistrations(purgePending: boolean) {
@@ -173,7 +116,6 @@ export default function Admin() {
       if (!r.ok) throw new Error(String(j.error || "No se pudieron cargar los ajustes"));
       setRegistrationsOpen(Boolean(j.registrationsOpen));
       setInvites(Array.isArray(j.invites) ? (j.invites as InviteRow[]) : []);
-      if (j.camp) setCamp({ ...EMPTY_EDITION, ...(j.camp as Partial<CampEditionForm>) });
     } catch (e: unknown) {
       alert(getErrorMessage(e) || "No se pudieron cargar los ajustes");
     } finally {
@@ -445,72 +387,6 @@ export default function Admin() {
                 ) : null}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        <div className="card" style={{ marginTop: 12 }}>
-          <h3 style={{ margin: 0 }}>Campamento actual</h3>
-          <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>
-            Estos datos son los que se muestran en la landing y en los mails.
-          </div>
-
-          <div className="grid2" style={{ marginTop: 10 }}>
-            <div>
-              <label>Edición (año)</label>
-              <input
-                value={camp.edition}
-                onChange={(e) => setCamp({ ...camp, edition: e.target.value })}
-                placeholder="Ej: 2027"
-              />
-            </div>
-            <div>
-              <label>Fechas</label>
-              <input
-                value={camp.datesText}
-                onChange={(e) => setCamp({ ...camp, datesText: e.target.value })}
-                placeholder="Ej: 5, 6 y 7 de marzo de 2027"
-              />
-            </div>
-            <div>
-              <label>Precio por persona (campa completo)</label>
-              <input
-                type="number"
-                min={0}
-                value={camp.priceFull}
-                onChange={(e) => setCamp({ ...camp, priceFull: Number(e.target.value || 0) })}
-              />
-            </div>
-            <div>
-              <label>Aclaración de precios</label>
-              <input
-                value={camp.priceNote}
-                onChange={(e) => setCamp({ ...camp, priceNote: e.target.value })}
-                placeholder="Ej: Valores hasta el 31/01/2027"
-              />
-            </div>
-            <div>
-              <label>Lema</label>
-              <input
-                value={camp.motto}
-                onChange={(e) => setCamp({ ...camp, motto: e.target.value })}
-                placeholder="Ej: “Hasta que nos venga a buscar”"
-              />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn" type="button" onClick={() => saveCamp(false)} disabled={savingCamp}>
-              {savingCamp ? "Guardando..." : "Guardar cambios"}
-            </button>
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={() => saveCamp(true)}
-              disabled={savingCamp}
-              title="Archiva inscripciones y compras, conserva las personas y arranca la edición nueva"
-            >
-              🏕️ Iniciar campamento nuevo
-            </button>
           </div>
         </div>
 

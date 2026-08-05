@@ -81,6 +81,19 @@ export default function AdminUsers() {
     await load();
   }
 
+  async function deleteUser(u: UserRow) {
+    setErr(null);
+    if (!confirm(`¿Eliminar el usuario ${u.email}? No se puede deshacer.`)) return;
+
+    const r = await fetch(`/api/admin/users?id=${encodeURIComponent(u.id)}`, { method: "DELETE" });
+    const j = await safeJson(r);
+    if (!r.ok) {
+      setErr(j.error || "No se pudo eliminar");
+      return;
+    }
+    await load();
+  }
+
   async function saveRow(u: UserRow, patch: Partial<UserRow> & { newPass?: string }) {
     setErr(null);
     const r = await fetch("/api/admin/users", {
@@ -178,7 +191,13 @@ export default function AdminUsers() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <UserRowComp key={u.id} u={u} canEdit={!!isSuper} onSave={(patch) => saveRow(u, patch)} />
+                <UserRowComp
+                  key={u.id}
+                  u={u}
+                  canEdit={!!isSuper}
+                  onSave={(patch) => saveRow(u, patch)}
+                  onDelete={() => deleteUser(u)}
+                />
               ))}
 
               {users.length === 0 ? (
@@ -196,10 +215,12 @@ function UserRowComp({
   u,
   canEdit,
   onSave,
+  onDelete,
 }: {
   u: UserRow;
   canEdit: boolean;
   onSave: (patch: Partial<UserRow> & { newPass?: string }) => void;
+  onDelete: () => void;
 }) {
   const [name, setName] = useState(u.name || "");
   const [role, setRole] = useState<UserRow["role"]>(u.role);
@@ -242,16 +263,21 @@ function UserRowComp({
       </td>
       <td style={{ whiteSpace: "nowrap" }}>
         {canEdit ? (
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              onSave({ name, role, isActive, newPass });
-              setNewPass("");
-            }}
-          >
-            Guardar
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                onSave({ name, role, isActive, newPass });
+                setNewPass("");
+              }}
+            >
+              Guardar
+            </button>
+            <button className="btn secondary" type="button" onClick={onDelete}>
+              🗑️ Eliminar
+            </button>
+          </div>
         ) : (
           <small style={{ opacity: 0.7 }}>—</small>
         )}

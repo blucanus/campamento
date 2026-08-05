@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { normalizePhoneAR } from "@/lib/pure";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
@@ -83,6 +84,8 @@ export default function Paso1() {
     checkGate(code);
   }, [router.isReady, router.query.code]);
 
+  const phoneCheck = useMemo(() => normalizePhoneAR(form.phone), [form.phone]);
+
   const daysDetail = useMemo(() => {
     return form.optionDays === "full"
       ? ""
@@ -106,30 +109,30 @@ export default function Paso1() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "No encontramos ese DNI.");
 
-      type Member = { dni?: string; firstName?: string; lastName?: string };
+      type Member = {
+        dni?: string;
+        firstName?: string;
+        lastName?: string;
+        sex?: string;
+        age?: number;
+      };
       const person = (j.person || {}) as Member;
-      const members = (Array.isArray(j.members) ? j.members : []) as Member[];
-
-      // El que busca queda primero: va a ser el familiar principal de esta inscripción.
-      const ordered = [person, ...members.filter((m) => String(m.dni || "") !== String(person.dni || ""))];
 
       setForm((p) => ({
         ...p,
-        count: Math.max(1, ordered.length),
         primaryFirstName: person.firstName || p.primaryFirstName,
         primaryLastName: person.lastName || p.primaryLastName,
         phone: String(j.phone || "") || p.phone,
         email: String(j.email || "") || p.email
       }));
 
-      localStorage.setItem("prefillGroup", JSON.stringify(ordered));
+      // Solo la persona del DNI: al resto del grupo se lo agrega (y busca) en el paso 2.
+      localStorage.setItem("prefillGroup", JSON.stringify([person]));
       localStorage.removeItem("step2");
       localStorage.removeItem("regId");
 
       setLookupMsg(
-        ordered.length > 1
-          ? `Encontramos ${ordered.length} personas de tu grupo. En el paso 2 revisás quiénes vienen este año.`
-          : "Cargamos tus datos. Revisalos por las dudas."
+        "Cargamos tus datos. Revisalos, y en el paso 2 agregás al resto del grupo buscándolos por DNI."
       );
     } catch (e: unknown) {
       setLookupMsg(e instanceof Error ? e.message : "No se pudo buscar el DNI.");
@@ -144,7 +147,14 @@ export default function Paso1() {
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const payload = { ...form, daysDetail };
+
+    const wa = normalizePhoneAR(form.phone);
+    if (!wa.ok) {
+      alert("Revisá el WhatsApp: poné código de área y número, sin 0 ni 15. Ej: 221 555-1234.");
+      return;
+    }
+
+    const payload = { ...form, phone: wa.display, whatsapp: wa.wa, daysDetail };
     localStorage.setItem("step1", JSON.stringify(payload));
     router.push("/inscripcion/paso-2");
   }
@@ -376,7 +386,7 @@ export default function Paso1() {
               </div>
 
               <div>
-                <label>Teléfono</label>
+                <label>WhatsApp (obligatorio)</label>
                 <input
                   required
                   type="tel"
@@ -385,7 +395,18 @@ export default function Paso1() {
                   placeholder="Ej: 221 555-1234"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onBlur={(e) => {
+                    const w = normalizePhoneAR(e.target.value);
+                    if (w.ok) setForm((p) => ({ ...p, phone: w.display }));
+                  }}
                 />
+                <div className="fieldHint">
+                  {phoneCheck.ok ? (
+                    <>Te vamos a escribir por WhatsApp a <b>{phoneCheck.display}</b>.</>
+                  ) : (
+                    <>Con código de área, sin 0 ni 15. Ej: 221 555-1234.</>
+                  )}
+                </div>
               </div>
 
               <div>

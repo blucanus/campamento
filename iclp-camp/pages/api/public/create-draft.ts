@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
+import { normalizePhoneAR } from "@/lib/pure";
 import {
   checkRegistrationAccess,
   consumeRegistrationAccessCode
@@ -22,10 +23,13 @@ function normalizePrimary(step1: any) {
       ""
     ).trim();
 
+  const wa = normalizePhoneAR(phone);
+
   return {
     name: `${first} ${last}`.trim() || "-",
     email: email || "",
-    phone: phone || ""
+    phone: wa.ok ? wa.display : phone,
+    whatsapp: wa.wa
   };
 }
 

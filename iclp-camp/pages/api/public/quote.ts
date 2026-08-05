@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await connectDB();
 
   const camp = await getCampEdition();
-  const base = computeTotalARS(step1, attendees, camp.priceFull);
+  const base = computeTotalARS(step1, attendees, camp.pricing);
 
   const products = await Product.find({}).lean();
   const prodById = new Map(products.map((p: any) => [String(p._id), p]));
