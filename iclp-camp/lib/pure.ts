@@ -135,6 +135,14 @@ export function computeCampTotal(params: {
   };
 }
 
+/** Mercado Pago exige que el external_id de la caja (POS) sea solo alfanumerico. */
+export function sanitizePosId(value: unknown) {
+  const clean = String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  return clean || "CAMPAICLP";
+}
+
 /** Nombre de coleccion para archivar una edicion: "2026 / marzo" -> "registrations_2026_marzo" */
 export function archiveCollectionName(prefix: string, edition: string) {
   const slug = String(edition || "")

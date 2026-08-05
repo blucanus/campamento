@@ -5,7 +5,8 @@ import {
   computeCampTotal,
   normalizeDni,
   normalizePhoneAR,
-  resolveTierPrice
+  resolveTierPrice,
+  sanitizePosId
 } from "../lib/pure.ts";
 
 // DNI
@@ -23,6 +24,11 @@ assert.equal(bumpAge(10, 0, 2028), 10); // sin año de carga, no toca
 assert.equal(archiveCollectionName("registrations", "2026"), "registrations_2026");
 assert.equal(archiveCollectionName("registrations", "2027 / Marzo"), "registrations_2027_marzo");
 assert.equal(archiveCollectionName("merchorders", ""), "merchorders_sin_edicion");
+
+// El external_id de la caja de MP tiene que ser alfanumerico
+assert.equal(sanitizePosId("CAMPA-ICLP"), "CAMPAICLP");
+assert.equal(sanitizePosId("caja 1"), "CAJA1");
+assert.equal(sanitizePosId("---"), "CAMPAICLP");
 
 // Telefono -> WhatsApp
 assert.equal(normalizePhoneAR("221 15 555-1234").wa, "5492215551234");
