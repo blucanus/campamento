@@ -26,9 +26,9 @@ assert.equal(archiveCollectionName("registrations", "2027 / Marzo"), "registrati
 assert.equal(archiveCollectionName("merchorders", ""), "merchorders_sin_edicion");
 
 // El external_id de la caja de MP tiene que ser alfanumerico
-assert.equal(sanitizePosId("CAMPA-ICLP"), "CAMPAICLP");
+assert.equal(sanitizePosId("CAMP-01"), "CAMP01");
 assert.equal(sanitizePosId("caja 1"), "CAJA1");
-assert.equal(sanitizePosId("---"), "CAMPAICLP");
+assert.equal(sanitizePosId("---"), "CAMP01");
 
 // Telefono -> WhatsApp
 assert.equal(normalizePhoneAR("221 15 555-1234").wa, "5492215551234");

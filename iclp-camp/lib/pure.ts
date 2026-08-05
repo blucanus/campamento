@@ -140,7 +140,7 @@ export function sanitizePosId(value: unknown) {
   const clean = String(value || "")
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
-  return clean || "CAMPAICLP";
+  return clean || "CAMP01";
 }
 
 /** Nombre de coleccion para archivar una edicion: "2026 / marzo" -> "registrations_2026_marzo" */

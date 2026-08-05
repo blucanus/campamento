@@ -86,8 +86,10 @@ export async function getCollectorId(): Promise<string> {
   return String(me?.id || "");
 }
 
-// Como figura la sucursal/caja dentro de Mercado Pago.
-const QR_STORE_NAME = "Campamento";
+// Como figura dentro de Mercado Pago: la caja CAMP-01 dentro del local ICLP.
+const QR_STORE_NAME = "ICLP";
+export const QR_STORE_EXTERNAL_ID = "ICLP";
+const QR_POS_NAME = "CAMP-01";
 
 // Domicilio de la sucursal (lo pide MP). Es la iglesia, no el predio del campa.
 const QR_STORE_LOCATION = {
@@ -129,7 +131,7 @@ export async function getOrCreateQrPos(externalId: string, storeId: string) {
   return mpApi("/pos", {
     method: "POST",
     body: JSON.stringify({
-      name: QR_STORE_NAME,
+      name: QR_POS_NAME,
       fixed_amount: true,
       external_id: externalId,
       store_id: storeId

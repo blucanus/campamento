@@ -13,7 +13,7 @@ export const env = {
   MP_NOTIFICATION_URL:
     process.env.MP_NOTIFICATION_URL || "http://localhost:3000/api/webhooks/mercadopago",
   // Caja (POS) usada para el QR interoperable
-  MP_QR_POS_ID: process.env.MP_QR_POS_ID || "CAMPAICLP",
+  MP_QR_POS_ID: process.env.MP_QR_POS_ID || "CAMP01",
 
   // Pricing campa
   CAMP_PRICE_FULL: Number(process.env.CAMP_PRICE_FULL || 63000),

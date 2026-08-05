@@ -8,7 +8,8 @@ import {
   createQrOrder,
   getCollectorId,
   getOrCreateQrPos,
-  getOrCreateQrStore
+  getOrCreateQrStore,
+  QR_STORE_EXTERNAL_ID
 } from "@/lib/mercadopago";
 import { sanitizePosId } from "@/lib/pure";
 import { Registration } from "@/models/Registration";
@@ -41,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const camp = await getCampEdition();
     const collectorId = await getCollectorId();
     const posId = sanitizePosId(env.MP_QR_POS_ID);
-    const store = await getOrCreateQrStore(collectorId, posId);
+    const store = await getOrCreateQrStore(collectorId, QR_STORE_EXTERNAL_ID);
     const pos = await getOrCreateQrPos(posId, String(store?.id || ""));
     const externalPosId = String(pos?.external_id || posId);
 
