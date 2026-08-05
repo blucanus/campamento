@@ -4,7 +4,12 @@ import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { registrationTotalARS } from "@/lib/pricing";
 import { getCampEdition } from "@/lib/campEdition";
-import { createQrOrder, getCollectorId, getOrCreateQrPos } from "@/lib/mercadopago";
+import {
+  createQrOrder,
+  getCollectorId,
+  getOrCreateQrPos,
+  getOrCreateQrStore
+} from "@/lib/mercadopago";
 import { sanitizePosId } from "@/lib/pure";
 import { Registration } from "@/models/Registration";
 
@@ -36,7 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const camp = await getCampEdition();
     const collectorId = await getCollectorId();
     const posId = sanitizePosId(env.MP_QR_POS_ID);
-    const pos = await getOrCreateQrPos(posId);
+    const store = await getOrCreateQrStore(collectorId, posId);
+    const pos = await getOrCreateQrPos(posId, String(store?.id || ""));
     const externalPosId = String(pos?.external_id || posId);
 
     const order = await createQrOrder({

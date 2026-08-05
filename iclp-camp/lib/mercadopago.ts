@@ -86,8 +86,36 @@ export async function getCollectorId(): Promise<string> {
   return String(me?.id || "");
 }
 
-/** Busca la caja (POS) de la web y, si no existe, la crea. */
-export async function getOrCreateQrPos(externalId: string) {
+/**
+ * Busca la sucursal de la web y, si no existe, la crea.
+ * Mercado Pago no deja crear una caja suelta: tiene que colgar de una sucursal.
+ */
+export async function getOrCreateQrStore(collectorId: string, externalId: string) {
+  const base = `/users/${encodeURIComponent(collectorId)}/stores`;
+
+  const found = await mpApi(`${base}/search?external_id=${encodeURIComponent(externalId)}`);
+  const list = found?.results;
+  if (Array.isArray(list) && list.length) return list[0];
+
+  return mpApi(base, {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Campamento ICLP",
+      external_id: externalId,
+      location: {
+        street_number: "1",
+        street_name: "Campamento Elim",
+        city_name: "Veronica",
+        state_name: "Buenos Aires",
+        latitude: -35.366368,
+        longitude: -57.339375
+      }
+    })
+  });
+}
+
+/** Busca la caja (POS) de la web y, si no existe, la crea dentro de la sucursal. */
+export async function getOrCreateQrPos(externalId: string, storeId: string) {
   const found = await mpApi(`/pos?external_id=${encodeURIComponent(externalId)}`);
   const list = found?.results;
   if (Array.isArray(list) && list.length) return list[0];
@@ -97,7 +125,8 @@ export async function getOrCreateQrPos(externalId: string) {
     body: JSON.stringify({
       name: "Campamento ICLP",
       fixed_amount: true,
-      external_id: externalId
+      external_id: externalId,
+      store_id: storeId
     })
   });
 }
