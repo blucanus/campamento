@@ -1038,6 +1038,93 @@ tbody tr:last-child td { border-bottom: none; }
   .cartRowSide { width: 100%; justify-content: space-between; }
 }
 
+/* --- Admin: carga de productos / variantes --- */
+.filtersRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+@media (max-width: 720px) { .filtersRow { grid-template-columns: 1fr; } }
+
+.grpHead {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.grpTitle { flex: 1; min-width: 0; }
+.grpTitle b { font-size: 16px; color: var(--brand-800); }
+.grpThumb {
+  width: 62px;
+  height: 62px;
+  flex: 0 0 auto;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: #fff;
+}
+.grpThumb.is-empty { background: var(--brand-100); }
+
+.varList { display: grid; gap: 8px; margin-top: 12px; }
+.grpPrices { display: flex; gap: 10px; flex: 0 0 auto; }
+.grpPrices .varField input { width: 120px; }
+
+.varRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+}
+.varSize { padding-bottom: 9px; }
+.varField { margin: 0; display: grid; gap: 4px; }
+.varField > span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.varField input { padding: 8px 10px; font-size: 14px; max-width: 140px; }
+.varCheck {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 9px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.varRow .btn { margin-bottom: 2px; }
+
+@media (max-width: 820px) {
+  .grpHead { flex-wrap: wrap; }
+  .grpPrices { width: 100%; }
+  .grpPrices .varField { flex: 1; }
+  .grpPrices .varField input { width: 100%; }
+  .varRow { grid-template-columns: 56px minmax(0, 1fr) auto auto; align-items: center; }
+  .varSize, .varCheck { padding-bottom: 0; }
+  .varCheck span { display: none; }
+}
+
+.grpPhoto { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.grpPhoto summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-700);
+  list-style: none;
+}
+.grpPhoto summary::-webkit-details-marker { display: none; }
+.grpPhoto summary::after { content: " ▾"; }
+.grpPhoto[open] summary::after { content: " ▴"; }
+
 .miniTable { width: 100%; border-collapse: separate; border-spacing: 0; }
 .miniTable th, .miniTable td {
   padding: 10px 8px;
