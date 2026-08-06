@@ -4,17 +4,6 @@ import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type InviteRow = {
-  code: string;
-  note: string;
-  isActive: boolean;
-  maxUses: number;
-  usedCount: number;
-  expiresAt: string | null;
-  createdAt: string | null;
-  lastUsedAt: string | null;
-  link: string;
-};
 type RegistrationRow = {
   _id: string;
   primary?: { name?: string; phone?: string };
@@ -45,12 +34,6 @@ export default function Admin() {
 
   const [registrationsOpen, setRegistrationsOpen] = useState(true);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [invites, setInvites] = useState<InviteRow[]>([]);
-  const [note, setNote] = useState("");
-  const [maxUses, setMaxUses] = useState(1);
-  const [expiresDays, setExpiresDays] = useState(7);
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [lastLink, setLastLink] = useState("");
 
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todas");
   const [selected, setSelected] = useState<string[]>([]);
@@ -115,7 +98,6 @@ export default function Admin() {
       const j = await r.json().catch(() => ({} as Record<string, unknown>));
       if (!r.ok) throw new Error(String(j.error || "No se pudieron cargar los ajustes"));
       setRegistrationsOpen(Boolean(j.registrationsOpen));
-      setInvites(Array.isArray(j.invites) ? (j.invites as InviteRow[]) : []);
     } catch (e: unknown) {
       alert(getErrorMessage(e) || "No se pudieron cargar los ajustes");
     } finally {
@@ -138,61 +120,6 @@ export default function Admin() {
       alert(getErrorMessage(e) || "No se pudo guardar");
     } finally {
       await loadSettings();
-    }
-  }
-
-  async function createInvite() {
-    setCreatingInvite(true);
-    try {
-      const r = await fetch("/api/admin/registration-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create_invite",
-          note,
-          maxUses,
-          expiresDays
-        })
-      });
-      const j = await r.json().catch(() => ({} as Record<string, unknown>));
-      if (!r.ok) throw new Error(String(j.error || "No se pudo generar el codigo"));
-
-      const inviteObj =
-        typeof j.invite === "object" && j.invite
-          ? (j.invite as { link?: unknown })
-          : {};
-      const link = String(inviteObj.link || "");
-      setLastLink(link);
-      if (link) {
-        try {
-          await navigator.clipboard.writeText(link);
-        } catch {
-          // noop
-        }
-      }
-
-      setNote("");
-      await loadSettings();
-    } catch (e: unknown) {
-      alert(getErrorMessage(e) || "No se pudo generar el codigo");
-    } finally {
-      setCreatingInvite(false);
-    }
-  }
-
-  async function deactivateInvite(code: string) {
-    if (!confirm(`Desactivar codigo ${code}?`)) return;
-    try {
-      const r = await fetch("/api/admin/registration-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "deactivate_invite", code })
-      });
-      const j = await r.json().catch(() => ({} as Record<string, unknown>));
-      if (!r.ok) throw new Error(String(j.error || "No se pudo desactivar"));
-      await loadSettings();
-    } catch (e: unknown) {
-      alert(getErrorMessage(e) || "No se pudo desactivar");
     }
   }
 
@@ -287,106 +214,10 @@ export default function Admin() {
               >
                 Cerrar inscripciones
               </button>
+              <Link className="btn secondary" href="/admin/accesos">
+                Links de excepcion
+              </Link>
             </div>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <h4 style={{ marginTop: 0, marginBottom: 8 }}>Generar link unico de excepcion</h4>
-            <div className="grid2">
-              <div>
-                <label>Nota interna (opcional)</label>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ej: Familia Perez"
-                />
-              </div>
-              <div>
-                <label>Vence en dias (0 = sin vencimiento)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={expiresDays}
-                  onChange={(e) => setExpiresDays(Number(e.target.value || 0))}
-                />
-              </div>
-              <div>
-                <label>Cantidad de usos</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={maxUses}
-                  onChange={(e) => setMaxUses(Number(e.target.value || 1))}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="btn" type="button" onClick={createInvite} disabled={creatingInvite}>
-                {creatingInvite ? "Generando..." : "Generar codigo y link"}
-              </button>
-              {lastLink ? (
-                <button className="btn secondary" type="button" onClick={() => copyText(lastLink)}>
-                  Copiar ultimo link
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="tableWrap" style={{ marginTop: 14 }}>
-            <table style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th>Codigo</th>
-                  <th>Nota</th>
-                  <th>Uso</th>
-                  <th>Vence</th>
-                  <th>Estado</th>
-                  <th>Link</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {invites.map((x) => (
-                  <tr key={x.code}>
-                    <td><code>{x.code}</code></td>
-                    <td>{x.note || "-"}</td>
-                    <td>{x.usedCount}/{x.maxUses}</td>
-                    <td>{x.expiresAt ? new Date(x.expiresAt).toLocaleString("es-AR") : "Sin vencimiento"}</td>
-                    <td>
-                      <Badge tone={x.isActive ? "success" : "muted"}>
-                        {x.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </td>
-                    <td>
-                      <button className="btn secondary" type="button" onClick={() => copyText(x.link)}>
-                        Copiar link
-                      </button>
-                    </td>
-                    <td>
-                      {x.isActive ? (
-                        <button
-                          className="btn secondary"
-                          type="button"
-                          onClick={() => deactivateInvite(x.code)}
-                        >
-                          Desactivar
-                        </button>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-
-                {!invites.length ? (
-                  <tr>
-                    <td colSpan={7} style={{ opacity: 0.7 }}>No hay codigos generados.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
           </div>
         </div>
 

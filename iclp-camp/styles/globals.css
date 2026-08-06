@@ -363,7 +363,8 @@ label {
   color: var(--ink-2);
 }
 
-input, select, textarea {
+/* Los checkbox/radio quedan fuera: con appearance:none pierden el tilde. */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--border-strong);
@@ -831,21 +832,62 @@ tbody tr:last-child td { border-bottom: none; }
   box-shadow: var(--ring);
 }
 
+/* Pie de la tarjeta, no una tarjeta adentro de otra: sin borde ni sombra propios. */
 .stickyBar {
   position: sticky;
-  bottom: 12px;
+  bottom: 0;
   z-index: 40;
   display: flex;
   gap: 10px;
-  padding: 10px;
-  border-radius: var(--r-lg);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--sh-lg);
+  margin: 18px -18px -18px;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  /* Opaca: si es traslucida se lee el formulario por debajo de los botones. */
+  background: #fff;
+  box-shadow: 0 -6px 18px rgba(22, 33, 29, 0.06);
 }
 .stickyBar .btn { flex: 1; padding: 13px 16px; border-radius: var(--r-md); font-weight: 800; }
+@media (max-width: 780px) {
+  .stickyBar { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+}
+
+/* Contador de personas (+ / -) */
+.stepperNum {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 6px;
+}
+.stepperBtn {
+  width: 52px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  border-radius: var(--r-sm);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.16s var(--ease);
+}
+.stepperBtn:hover:not(:disabled) { border-color: var(--brand-600); background: var(--brand-050); color: var(--brand-800); }
+.stepperBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stepperBtn.sm { width: 38px; font-size: 18px; }
+.stepperValue {
+  flex: 1;
+  min-height: 46px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  border-radius: var(--r-sm);
+  background: var(--brand-100);
+  border: 1px solid rgba(47, 93, 80, 0.18);
+}
+.stepperValue b { font-size: 21px; font-weight: 900; color: var(--brand-800); }
+.stepperValue span { font-size: 13.5px; color: var(--brand-700); font-weight: 600; }
 
 .summaryBox { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; }
 @media (max-width: 900px) { .summaryBox { grid-template-columns: 1fr; } }
@@ -862,6 +904,124 @@ tbody tr:last-child td { border-bottom: none; }
 
 .kpi { font-size: 14px; font-weight: 800; }
 .kpiBig { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; color: var(--brand-800); }
+
+/* --- Paso 3: personas, merch y resumen de pago --- */
+.peopleBox {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.peopleBox summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--brand-700);
+  list-style: none;
+}
+.peopleBox summary::-webkit-details-marker { display: none; }
+.peopleBox summary::after { content: " ▾"; }
+.peopleBox[open] summary::after { content: " ▴"; }
+.peopleList { display: grid; gap: 8px; margin-top: 10px; }
+.peopleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--brand-050);
+}
+
+.sizeBtn { flex: 0 1 72px; min-width: 60px; }
+
+.prodCard {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+}
+.prodThumb {
+  width: 92px;
+  height: 92px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+}
+.prodThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prodThumb.is-empty { background: var(--brand-100); cursor: default; }
+.prodInfo { flex: 1; min-width: 0; }
+.prodPrice { font-size: 20px; font-weight: 900; color: var(--brand-800); letter-spacing: -0.02em; }
+.prodActions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.prodActions .btn { flex: 1 1 130px; }
+
+.cartList { display: grid; gap: 8px; margin-top: 14px; }
+.cartRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: #fff;
+}
+.cartRowMain { min-width: 140px; flex: 1 1 auto; }
+.cartRowSide { display: flex; gap: 12px; align-items: center; }
+
+.payBox { position: relative; }
+.payTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--brand-100);
+  border: 1px solid rgba(47, 93, 80, 0.2);
+  font-weight: 800;
+  color: var(--brand-800);
+}
+.payActions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  margin-top: 16px;
+}
+.payActions .btn { width: 100%; }
+@media (min-width: 620px) {
+  .payActions { flex-direction: row; align-items: center; }
+  .payActions .btn { width: auto; }
+  .payActions .btn.lg { flex: 1; }
+  .payActions .btn.secondary { order: -1; }
+}
+
+.payNotes {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .prodCard { flex-direction: column; }
+  .prodThumb { width: 100%; height: 170px; }
+  .prodActions .btn { flex: 1 1 100%; }
+  .cartRowSide { width: 100%; justify-content: space-between; }
+}
 
 .miniTable { width: 100%; border-collapse: separate; border-spacing: 0; }
 .miniTable th, .miniTable td {

@@ -15,6 +15,50 @@ type Variant = {
 
 type CartItem = { variantId: string; qty: number };
 
+type Attendee = {
+  firstName?: string;
+  lastName?: string;
+  dni?: string;
+  age?: number;
+  relation?: string;
+  isPrimary?: boolean;
+};
+
+type Step1 = {
+  count?: number;
+  optionDays?: "full" | "1" | "2";
+  oneDay?: string;
+  twoDays?: string;
+  primaryFirstName?: string;
+  primaryLastName?: string;
+  phone?: string;
+  email?: string;
+};
+
+type ExtrasLine = {
+  variantId: string;
+  name: string;
+  attributes?: { design?: string; color?: string; size?: string };
+  unitPrice: number;
+  qty: number;
+  stock: number;
+  lineTotal: number;
+};
+
+type Pricing = {
+  payingPeople?: number;
+  pricePerPerson?: number;
+  normalCount?: number;
+  discountedCount?: number;
+  discountedPricePerPerson?: number;
+  campTotal?: number;
+  total?: number;
+  extrasTotal?: number;
+  totalFinal?: number;
+  extrasLines?: ExtrasLine[];
+  errors?: string[];
+};
+
 /**
  * Google Drive muchas veces no sirve directo para <img>.
  * Esto transforma links comunes en un link directo (uc?export=view&id=...).
@@ -35,10 +79,16 @@ function normalizeDriveUrl(url: string) {
   return url;
 }
 
+function diasTexto(s1: Step1) {
+  if (s1.optionDays === "1") return `1 día (${s1.oneDay || "-"})`;
+  if (s1.optionDays === "2") return `2 días (${String(s1.twoDays || "").replace("-", " y ")})`;
+  return "Campamento completo";
+}
+
 export default function Paso3() {
-  const [step1, setStep1] = useState<any>(null);
-  const [attendees, setAttendees] = useState<any[]>([]);
-  const [pricing, setPricing] = useState<any>(null);
+  const [step1, setStep1] = useState<Step1 | null>(null);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [pricing, setPricing] = useState<Pricing | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [loadingPay, setLoadingPay] = useState(false);
@@ -144,6 +194,8 @@ export default function Paso3() {
     });
   }, [filtered, selDesign, selColor, selSize, selType]);
 
+  const hasVariants = variants.length > 0;
+
   function addOne() {
     if (!selectedVariant) return alert("Seleccioná una variante");
     const id = selectedVariant.variantId;
@@ -213,7 +265,7 @@ export default function Paso3() {
       <Layout title="Confirmar inscripción">
         <div className="card">
           <div className="alert">No se encontraron datos del Paso 1.</div>
-          <Link className="btn" href="/inscripcion/paso-1">
+          <Link className="btn" href="/inscripcion/paso-1" style={{ marginTop: 12 }}>
             Ir a Paso 1
           </Link>
         </div>
@@ -224,238 +276,344 @@ export default function Paso3() {
   const imgUrl = selectedVariant?.photoUrl ? normalizeDriveUrl(selectedVariant.photoUrl) : "";
 
   // helpers UI
-  const money = (n: any) => `$${Number(n || 0).toLocaleString("es-AR")}`;
+  const money = (n: unknown) => `$${Number(n || 0).toLocaleString("es-AR")}`;
+
+  const inCart = selectedVariant ? cart[selectedVariant.variantId] || 0 : 0;
+  const cartLines = pricing?.extrasLines || [];
+  const cartCount = cartLines.reduce((acc, x) => acc + Number(x.qty || 0), 0);
 
   return (
     <Layout title="Confirmar inscripción">
-      <div className="card">
-        <h2>Confirmar inscripción</h2>
-
-        <p>
-          <b>Principal:</b> {step1.primaryFirstName} {step1.primaryLastName} – {step1.email}
-        </p>
-
-        {/* EXTRAS */}
-        <div className="card" style={{ marginTop: 12 }}>
-          <h3>Sumar productos (precio preferencial)</h3>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label>
-              Producto
-              <select
-                value={selType}
-                onChange={(e) => {
-                  const t = e.target.value as any;
-                  setSelType(t);
-                  setSelDesign("");
-                  setSelColor("");
-                }}
-              >
-                <option value="tee">Remeras</option>
-                <option value="cap">Gorras</option>
-              </select>
-            </label>
-
-            <label>
-              Diseño
-              <select value={selDesign} onChange={(e) => setSelDesign(e.target.value)}>
-                <option value="" disabled>
-                  Seleccionar
-                </option>
-                {designs.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Color
-              <select value={selColor} onChange={(e) => setSelColor(e.target.value)}>
-                <option value="" disabled>
-                  Seleccionar
-                </option>
-                {colors.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {selType === "tee" ? (
-              <label>
-                Talle
-                <select value={selSize} onChange={(e) => setSelSize(e.target.value)}>
-                  {sizes.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+      <div className="wizard">
+        <div className="wizardHead">
+          <div>
+            <h1 className="wizardTitle">Confirmá y pagá</h1>
+            <p className="wizardSub">Revisá que esté todo bien antes de ir a Mercado Pago.</p>
           </div>
 
-          <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-            {imgUrl ? (
+          <div className="stepper">
+            <div className="step isDone"><span className="stepDot" /> Datos</div>
+            <div className="step isDone"><span className="stepDot" /> Personas</div>
+            <div className="step isActive"><span className="stepDot" /> Pago</div>
+          </div>
+        </div>
+
+        {/* QUIÉN SE INSCRIBE */}
+        <div className="card cardTight">
+          <div className="row-between" style={{ marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>Tu inscripción</h3>
+            <Link className="btn ghost sm" href="/inscripcion/paso-2">
+              Editar
+            </Link>
+          </div>
+
+          <div className="row" style={{ marginBottom: 12 }}>
+            <span className="chip">📅 {diasTexto(step1)}</span>
+            <span className="chip">👥 {attendees.length || step1.count || 1} persona{(attendees.length || step1.count || 1) === 1 ? "" : "s"}</span>
+          </div>
+
+          <div className="summaryLine">
+            <span className="muted">Principal</span>
+            <b>{step1.primaryFirstName} {step1.primaryLastName}</b>
+          </div>
+          <div className="summaryLine">
+            <span className="muted">Email</span>
+            <span style={{ wordBreak: "break-all" }}>{step1.email}</span>
+          </div>
+          {step1.phone ? (
+            <div className="summaryLine">
+              <span className="muted">WhatsApp</span>
+              <span>{step1.phone}</span>
+            </div>
+          ) : null}
+
+          {attendees.length ? (
+            <details className="peopleBox">
+              <summary>Ver las {attendees.length} persona{attendees.length === 1 ? "" : "s"}</summary>
+              <div className="peopleList">
+                {attendees.map((a, i) => (
+                  <div className="peopleRow" key={`${a.dni || i}`}>
+                    <div>
+                      <b>{a.firstName} {a.lastName}</b>
+                      <div className="muted" style={{ fontSize: 12.5 }}>
+                        {a.relation || "Integrante"}{a.dni ? ` · DNI ${a.dni}` : ""}
+                      </div>
+                    </div>
+                    <span className="badge">{Number(a.age || 0)} años</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
+        </div>
+
+        {/* MERCH */}
+        {hasVariants ? (
+          <div className="card cardTight">
+            <div className="row-between" style={{ marginBottom: 4 }}>
+              <h3 style={{ margin: 0 }}>Sumá remeras y gorras</h3>
+              {cartCount ? <span className="badge success">{cartCount} en el carrito</span> : null}
+            </div>
+            <p className="muted" style={{ fontSize: 13.5 }}>
+              Precio preferencial por comprarlas junto con la inscripción.
+            </p>
+
+            <div className="segment" role="group" aria-label="Tipo de producto">
               <button
                 type="button"
-                onClick={() => setModalUrl(imgUrl)}
-                style={{ padding: 0, border: 0, background: "transparent", cursor: "pointer" }}
-                aria-label="Ver imagen"
+                className={`segBtn ${selType === "tee" ? "isActive" : ""}`}
+                onClick={() => { setSelType("tee"); setSelDesign(""); setSelColor(""); }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imgUrl}
-                  alt="foto"
-                  style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10 }}
-                />
+                👕 Remeras
               </button>
-            ) : (
-              <div style={{ width: 90, height: 90, borderRadius: 10, background: "rgba(15,118,110,0.08)" }} />
-            )}
+              <button
+                type="button"
+                className={`segBtn ${selType === "cap" ? "isActive" : ""}`}
+                onClick={() => { setSelType("cap"); setSelDesign(""); setSelColor(""); }}
+              >
+                🧢 Gorras
+              </button>
+            </div>
 
-            <div>
+            <div className="formGrid" style={{ marginTop: 12 }}>
               <div>
-                <b>{selectedVariant ? selectedVariant.sku : "Seleccioná una variante"}</b>
-              </div>
-              <div style={{ opacity: 0.8 }}>
-                Stock: {selectedVariant ? selectedVariant.stock : "-"} — Precio:{" "}
-                {selectedVariant ? money(selectedVariant.priceBundle) : "-"}
+                <label>Diseño</label>
+                <select value={selDesign} onChange={(e) => setSelDesign(e.target.value)}>
+                  <option value="" disabled>Seleccionar</option>
+                  {designs.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button className="btn secondary" type="button" onClick={removeOne} disabled={!selectedVariant}>
-                  -
-                </button>
-                <button className="btn" type="button" onClick={addOne} disabled={!selectedVariant}>
-                  Agregar
-                </button>
+              <div>
+                <label>Color</label>
+                <select value={selColor} onChange={(e) => setSelColor(e.target.value)}>
+                  <option value="" disabled>Seleccionar</option>
+                  {colors.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
             </div>
-          </div>
 
-          {/* Carrito */}
-          <div style={{ marginTop: 12 }}>
-            <h4>Tu carrito</h4>
+            {selType === "tee" && sizes.length ? (
+              <div>
+                <label>Talle</label>
+                <div className="segment">
+                  {sizes.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`segBtn sizeBtn ${selSize === s ? "isActive" : ""}`}
+                      onClick={() => setSelSize(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-            {pricing?.extrasLines?.length ? (
-              <table style={{ width: "100%" }}>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Variante</th>
-                    <th>Precio</th>
-                    <th>Cant.</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pricing.extrasLines.map((x: any) => {
-                    const label =
-                      `${x.attributes?.design || ""} - ${x.attributes?.color || ""}` +
-                      (x.attributes?.size ? ` - ${x.attributes.size}` : "");
-                    return (
-                      <tr key={x.variantId}>
-                        <td>{x.name}</td>
-                        <td>{label}</td>
-                        <td>{money(x.unitPrice)}</td>
-                        <td>
-                          <input
-                            type="number"
-                            min={0}
-                            max={x.stock}
-                            value={x.qty}
-                            onChange={(e) => setQty(x.variantId, Number(e.target.value), x.stock)}
-                            style={{ width: 90 }}
-                          />
-                        </td>
-                        <td>{money(x.lineTotal)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {/* Producto elegido */}
+            <div className="prodCard">
+              {imgUrl ? (
+                <button
+                  type="button"
+                  className="prodThumb"
+                  onClick={() => setModalUrl(imgUrl)}
+                  aria-label="Ver imagen del producto"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imgUrl} alt={selectedVariant?.sku || "Producto"} />
+                </button>
+              ) : (
+                <div className="prodThumb is-empty" aria-hidden />
+              )}
+
+              <div className="prodInfo">
+                <b>{selectedVariant ? selectedVariant.productName : "Elegí diseño y color"}</b>
+                <div className="muted" style={{ fontSize: 12.5 }}>
+                  {selectedVariant ? selectedVariant.sku : "Para ver precio y stock"}
+                </div>
+
+                <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                  <span className="prodPrice">
+                    {selectedVariant ? money(selectedVariant.priceBundle) : "—"}
+                  </span>
+                  {selectedVariant ? (
+                    <span className={`badge ${selectedVariant.stock > 0 ? "success" : "danger"}`}>
+                      {selectedVariant.stock > 0 ? `${selectedVariant.stock} disponibles` : "Sin stock"}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Con 0 en el carrito alcanza un boton; despues manda el contador. */}
+                <div className="prodActions">
+                  {inCart > 0 ? (
+                    <div className="stepperNum" style={{ margin: 0, width: 190 }}>
+                      <button
+                        type="button"
+                        className="stepperBtn"
+                        onClick={removeOne}
+                        aria-label="Quitar uno"
+                      >
+                        −
+                      </button>
+                      <div className="stepperValue"><b>{inCart}</b></div>
+                      <button
+                        type="button"
+                        className="stepperBtn"
+                        onClick={addOne}
+                        disabled={inCart >= (selectedVariant?.stock || 0)}
+                        aria-label="Agregar uno"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="btn"
+                      type="button"
+                      onClick={addOne}
+                      disabled={!selectedVariant || selectedVariant.stock <= 0}
+                    >
+                      Agregar al carrito
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Carrito: lista, no tabla (mobile) */}
+            {cartLines.length ? (
+              <div className="cartList">
+                {cartLines.map((x) => {
+                  const label =
+                    `${x.attributes?.design || ""} · ${x.attributes?.color || ""}` +
+                    (x.attributes?.size ? ` · ${x.attributes.size}` : "");
+                  return (
+                    <div className="cartRow" key={x.variantId}>
+                      <div className="cartRowMain">
+                        <b>{x.name}</b>
+                        <div className="muted" style={{ fontSize: 12.5 }}>{label}</div>
+                        <div className="muted" style={{ fontSize: 12.5 }}>
+                          {money(x.unitPrice)} c/u
+                        </div>
+                      </div>
+
+                      <div className="cartRowSide">
+                        <div className="stepperNum" style={{ margin: 0, width: 132 }}>
+                          <button
+                            type="button"
+                            className="stepperBtn sm"
+                            onClick={() => setQty(x.variantId, Number(x.qty) - 1, x.stock)}
+                            aria-label="Restar"
+                          >
+                            −
+                          </button>
+                          <div className="stepperValue"><b>{x.qty}</b></div>
+                          <button
+                            type="button"
+                            className="stepperBtn sm"
+                            onClick={() => setQty(x.variantId, Number(x.qty) + 1, x.stock)}
+                            disabled={Number(x.qty) >= Number(x.stock)}
+                            aria-label="Sumar"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <b>{money(x.lineTotal)}</b>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <p style={{ opacity: 0.8 }}>No agregaste productos.</p>
+              <p className="muted" style={{ fontSize: 13.5, marginTop: 12 }}>
+                Todavía no agregaste productos. Es opcional.
+              </p>
             )}
 
             {pricing?.errors?.length ? (
-              <div className="alert" style={{ marginTop: 10 }}>
+              <div className="alert" style={{ marginTop: 12 }}>
                 {pricing.errors.map((e: string, i: number) => (
                   <div key={i}>• {e}</div>
                 ))}
               </div>
             ) : null}
           </div>
-        </div>
+        ) : null}
 
-        {/* Resumen */}
-        <div className="card" style={{ marginTop: 12 }}>
-          <h3>Resumen de pago</h3>
+        {/* RESUMEN DE PAGO */}
+        <div className="card cardTight payBox">
+          <h3 style={{ marginTop: 0 }}>Resumen de pago</h3>
 
           {!pricing ? (
-            <p style={{ opacity: 0.8 }}>Calculando...</p>
+            <div className="stack" aria-busy="true">
+              <div className="skeleton" style={{ height: 18, width: "60%" }} />
+              <div className="skeleton" style={{ height: 18, width: "40%" }} />
+              <div className="skeleton" style={{ height: 30, width: "50%" }} />
+            </div>
           ) : (
             <>
-              <p>
-                <b>Personas que pagan (≥ 4 años):</b> {pricing.payingPeople}
-              </p>
+              <div className="summaryLine">
+                <span>
+                  Inscripción · {pricing.payingPeople} persona{pricing.payingPeople === 1 ? "" : "s"}
+                  <div className="muted" style={{ fontSize: 12.5 }}>
+                    {money(pricing.pricePerPerson)} por persona
+                  </div>
+                </span>
+                <b>{money(pricing.campTotal ?? pricing.total)}</b>
+              </div>
 
-              <p>
-                <b>Precio por persona:</b> {money(pricing.pricePerPerson)}
-              </p>
-
-              {/* ✅ Descuento familiar aplicado */}
               {Number(pricing.discountedCount || 0) > 0 ? (
-                <div className="card" style={{ marginTop: 10, background: "rgba(15,118,110,0.06)" }}>
-                  <b>✅ Descuento familiar aplicado</b>
-                  <div style={{ marginTop: 6, opacity: 0.9 }}>
-                    Desde el <b>5° miembro</b> que paga: <b>10% OFF</b> sobre el valor individual.
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <div>• Pagan sin descuento: <b>{pricing.normalCount}</b> persona(s)</div>
-                    <div>• Pagan con descuento: <b>{pricing.discountedCount}</b> persona(s)</div>
-                    <div>
-                      • Precio con descuento (c/u): <b>{money(pricing.discountedPricePerPerson)}</b>
+                <div className="summaryLine">
+                  <span>
+                    Descuento familiar
+                    <div className="muted" style={{ fontSize: 12.5 }}>
+                      {pricing.discountedCount} persona(s) a {money(pricing.discountedPricePerPerson)}
                     </div>
-                  </div>
+                  </span>
+                  <span className="badge success">10% OFF</span>
                 </div>
-              ) : (
-                <small style={{ display: "block", marginTop: 6, opacity: 0.9 }}>
-                  * Desde el 5° miembro que paga se aplica 10% OFF al valor individual.
-                </small>
-              )}
+              ) : null}
 
-              <p style={{ marginTop: 10 }}>
-                <b>Total inscripción campa:</b> <span style={{ fontSize: 18 }}>{money(pricing.campTotal ?? pricing.total)}</span>
-              </p>
+              <div className="summaryLine">
+                <span>
+                  Productos
+                  {cartCount ? (
+                    <div className="muted" style={{ fontSize: 12.5 }}>{cartCount} ítem(s)</div>
+                  ) : null}
+                </span>
+                <b>{money(pricing.extrasTotal)}</b>
+              </div>
 
-              <p>
-                <b>Extras:</b> {money(pricing.extrasTotal)}
-              </p>
+              <div className="payTotal">
+                <span>Total a pagar</span>
+                <span className="kpiBig">{money(pricing.totalFinal)}</span>
+              </div>
 
-              <p>
-                <b>Total final:</b>{" "}
-                <span style={{ fontSize: 20 }}>{money(pricing.totalFinal)}</span>
-              </p>
-
-              <small>
-                * Menores de 4 años no abonan. 1 día = 50%. 2 días o campa completo = total.
-              </small>
+              <ul className="payNotes">
+                <li>Menores de 4 años no abonan.</li>
+                <li>1 día = 50%. 2 días o campa completo = total.</li>
+                {Number(pricing.discountedCount || 0) > 0 ? null : (
+                  <li>Desde el 5° miembro que paga hay 10% OFF sobre el valor individual.</li>
+                )}
+                <li>Pagás en Mercado Pago: tarjeta, dinero en cuenta o efectivo.</li>
+              </ul>
             </>
           )}
-        </div>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-          <button className="btn" type="button" onClick={pagar} disabled={loadingPay}>
-            {loadingPay ? "Procesando..." : "Confirmar y pagar"}
-          </button>
-          <Link className="btn secondary" href="/inscripcion/paso-2">
-            Volver
-          </Link>
+          {/* Estatico a proposito: una barra sticky acá taparia los numeros del resumen. */}
+          <div className="payActions">
+            <button className="btn lg" type="button" onClick={pagar} disabled={loadingPay || !pricing}>
+              {loadingPay ? "Procesando..." : `Pagar ${pricing ? money(pricing.totalFinal) : ""}`}
+            </button>
+            <Link className="btn secondary" href="/inscripcion/paso-2">
+              ← Volver
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -466,7 +624,7 @@ export default function Paso3() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "rgba(22,33,29,0.66)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -479,14 +637,14 @@ export default function Paso3() {
             style={{
               width: "min(720px, 100%)",
               background: "#fff",
-              borderRadius: 14,
+              borderRadius: 18,
               overflow: "hidden",
-              border: "1px solid rgba(0,0,0,0.1)",
+              border: "1px solid var(--border)",
             }}
           >
             <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <b>Vista previa</b>
-              <button className="btn secondary" type="button" onClick={() => setModalUrl(null)}>
+              <button className="btn secondary sm" type="button" onClick={() => setModalUrl(null)}>
                 Cerrar
               </button>
             </div>

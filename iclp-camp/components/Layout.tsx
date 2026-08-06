@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 
 type NavItem = { href: string; label: string };
 
+// "Inscribirme" no va aca: ya esta como boton al final del menu.
 const PUBLIC_NAV: NavItem[] = [
   { href: "/", label: "Inicio" },
-  { href: "/inscripcion/paso-1", label: "Inscribirme" },
   { href: "/merch", label: "Merch" },
   { href: "/mi-habitacion", label: "Mi habitación" },
   { href: "/checkin", label: "Check-in" }
