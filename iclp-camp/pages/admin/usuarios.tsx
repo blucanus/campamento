@@ -177,6 +177,7 @@ export default function AdminUsers() {
           <h3>Listado</h3>
           {loading ? <p>Cargando...</p> : null}
 
+          <div className="tableWrap">
           <table style={{ width: "100%" }}>
             <thead>
               <tr>
@@ -205,6 +206,7 @@ export default function AdminUsers() {
               ) : null}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </Layout>
@@ -235,11 +237,16 @@ function UserRowComp({
           value={name}
           disabled={!canEdit}
           onChange={(e) => setName(e.target.value)}
-          style={{ width: 220 }}
+          style={{ width: 150 }}
         />
       </td>
       <td>
-        <select value={role} disabled={!canEdit} onChange={(e) => setRole(e.target.value as any)}>
+        <select
+          value={role}
+          disabled={!canEdit}
+          onChange={(e) => setRole(e.target.value as any)}
+          style={{ width: 130 }}
+        >
           <option value="admin">admin</option>
           <option value="superadmin">superadmin</option>
           <option value="staff">staff</option>
@@ -248,8 +255,17 @@ function UserRowComp({
       <td>
         <input type="checkbox" checked={isActive} disabled={!canEdit} onChange={(e) => setIsActive(e.target.checked)} />
       </td>
-      <td style={{ opacity: 0.85 }}>
-        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("es-AR") : "-"}
+      <td className="muted" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
+        {u.lastLoginAt
+          ? new Date(u.lastLoginAt).toLocaleString("es-AR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false
+            })
+          : "-"}
       </td>
       <td>
         <input
@@ -258,14 +274,14 @@ function UserRowComp({
           disabled={!canEdit}
           onChange={(e) => setNewPass(e.target.value)}
           placeholder="Nueva clave"
-          style={{ width: 160 }}
+          style={{ width: 120 }}
         />
       </td>
       <td style={{ whiteSpace: "nowrap" }}>
         {canEdit ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6 }}>
             <button
-              className="btn"
+              className="btn sm"
               type="button"
               onClick={() => {
                 onSave({ name, role, isActive, newPass });
@@ -274,8 +290,14 @@ function UserRowComp({
             >
               Guardar
             </button>
-            <button className="btn secondary" type="button" onClick={onDelete}>
-              🗑️ Eliminar
+            <button
+              className="btn sm secondary"
+              type="button"
+              onClick={onDelete}
+              title="Eliminar usuario"
+              aria-label="Eliminar usuario"
+            >
+              🗑️
             </button>
           </div>
         ) : (

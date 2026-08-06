@@ -16,6 +16,7 @@ const PUBLIC_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Inscripciones" },
   { href: "/admin/merch", label: "Merch" },
+  { href: "/admin/variants", label: "Productos" },
   { href: "/admin/reportes", label: "Reportes" },
   { href: "/staff", label: "Staff" },
   { href: "/admin/usuarios", label: "Usuarios" },
