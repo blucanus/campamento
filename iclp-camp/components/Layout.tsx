@@ -8,6 +8,7 @@ type NavItem = { href: string; label: string };
 const PUBLIC_NAV: NavItem[] = [
   { href: "/", label: "Inicio" },
   { href: "/inscripcion/paso-1", label: "Inscribirme" },
+  { href: "/merch", label: "Merch" },
   { href: "/mi-habitacion", label: "Mi habitación" },
   { href: "/checkin", label: "Check-in" }
 ];
@@ -30,6 +31,7 @@ const STAFF_NAV: NavItem[] = [
 export default function Layout({ title, children }: { title?: string; children: any }) {
   const { pathname } = useRouter();
   const [role, setRole] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // El panel (admin + staff) usa siempre el mismo menu; el login no lo muestra.
   const isPanel =
@@ -59,69 +61,81 @@ export default function Layout({ title, children }: { title?: string; children: 
       <Head>
         <title>{title ? `${title} - Campamento ICLP` : "Campamento ICLP"}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#2f5d50" />
       </Head>
 
-      <header className="header">
-        <div className="container nav" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <strong style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span>🏕️</span> Campamento ICLP
-            </strong>
-
-            {isPanel ? <BadgeNav text={isStaffOnly ? "STAFF" : "ADMIN"} /> : null}
-          </div>
-
-          <nav style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-            {nav.map((x) => (
-              <Link
-                key={x.href}
-                href={x.href}
-                style={{ fontWeight: pathname === x.href ? 900 : undefined }}
-              >
-                {x.label}
+      <div className="app-shell">
+        <header className="header">
+          <div className="container nav">
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <Link href={isPanel ? "/admin" : "/"} className="nav-brand">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="nav-logo" src="/logo.png" alt="" />
+                <span>Campamento ICLP</span>
               </Link>
-            ))}
 
-            {isPanel ? (
-              <>
-                <Link href="/inscripcion/paso-1?admin=1">
-                  <b>➕ Inscribir</b>
+              {isPanel ? <span className="nav-tag">{isStaffOnly ? "Staff" : "Admin"}</span> : null}
+            </div>
+
+            <button
+              className="nav-toggle"
+              type="button"
+              aria-label="Abrir menú"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <span />
+            </button>
+
+            {/* Al tocar cualquier item cerramos el menu mobile. */}
+          <nav
+            className={menuOpen ? "nav-links is-open" : "nav-links"}
+            onClick={() => setMenuOpen(false)}
+          >
+              {nav.map((x) => (
+                <Link
+                  key={x.href}
+                  href={x.href}
+                  className={pathname === x.href ? "nav-link is-active" : "nav-link"}
+                >
+                  {x.label}
                 </Link>
-                <span style={{ opacity: 0.35 }}>|</span>
-                <a href="#" onClick={(e) => { e.preventDefault(); logout(); }}>
-                  Salir
-                </a>
-              </>
-            ) : null}
-          </nav>
-        </div>
-      </header>
+              ))}
 
-      <main className="container" style={{ paddingTop: 20 }}>
-        {children}
-      </main>
+              {isPanel ? (
+                <>
+                  <Link className="btn sm" href="/inscripcion/paso-1?admin=1">
+                    Inscribir
+                  </Link>
+                  <button className="btn sm secondary" type="button" onClick={logout}>
+                    Salir
+                  </button>
+                </>
+              ) : (
+                <Link className="btn sm" href="/inscripcion/paso-1">
+                  Inscribirme
+                </Link>
+              )}
+            </nav>
+          </div>
+        </header>
 
-      <footer className="container" style={{ paddingBottom: 30, marginTop: 30 }}>
-        <small>© {new Date().getFullYear()} Campamento ICLP</small>
-      </footer>
+        <main className="container" style={{ paddingTop: 22, paddingBottom: 10 }}>
+          {children}
+        </main>
+
+        <footer className="site-footer">
+          <div className="container site-footer-inner">
+            <small>© {new Date().getFullYear()} Campamento ICLP</small>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <Link href="/">Inicio</Link>
+              <Link href="/inscripcion/paso-1">Inscripción</Link>
+              <Link href="/merch">Merch</Link>
+              <Link href="/checkin">Check-in</Link>
+            </div>
+          </div>
+        </footer>
+      </div>
     </>
-  );
-}
-
-function BadgeNav({ text }: { text: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 900,
-        letterSpacing: 1,
-        padding: "4px 10px",
-        borderRadius: 999,
-        background: "rgba(59,130,246,0.18)",
-        border: "1px solid rgba(255,255,255,0.14)"
-      }}
-    >
-      {text}
-    </span>
   );
 }

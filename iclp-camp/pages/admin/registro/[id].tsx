@@ -287,7 +287,7 @@ export default function Registro() {
         <h3>Productos</h3>
 
         {hasExtras ? (
-          <div style={{ width: "100%", overflowX: "auto" }}>
+          <div className="tableWrap">
             <table style={{ width: "100%" }}>
               <thead>
                 <tr>
@@ -330,7 +330,7 @@ export default function Registro() {
       <div className="card" style={{ marginTop: 12 }}>
         <h3>Integrantes</h3>
 
-        <div style={{ width: "100%", overflowX: "auto" }}>
+        <div className="tableWrap">
           <table style={{ width: "100%" }}>
             <thead>
               <tr>

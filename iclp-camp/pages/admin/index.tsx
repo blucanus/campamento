@@ -334,7 +334,7 @@ export default function Admin() {
             </div>
           </div>
 
-          <div style={{ marginTop: 14, width: "100%", overflowX: "auto" }}>
+          <div className="tableWrap" style={{ marginTop: 14 }}>
             <table style={{ width: "100%" }}>
               <thead>
                 <tr>
@@ -434,7 +434,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div style={{ marginTop: 14, width: "100%", overflowX: "auto" }}>
+        <div className="tableWrap" style={{ marginTop: 14 }}>
           <table style={{ width: "100%" }}>
             <thead>
               <tr>

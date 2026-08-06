@@ -193,7 +193,7 @@ export default function AdminCampa() {
           />
         </div>
 
-        <div style={{ marginTop: 14, width: "100%", overflowX: "auto" }}>
+        <div className="tableWrap" style={{ marginTop: 14 }}>
           <table style={{ width: "100%" }}>
             <thead>
               <tr>
@@ -351,7 +351,7 @@ export default function AdminCampa() {
           Ej: hasta 12 años, 50%. Si una persona entra en más de uno, se le aplica el de menor edad.
         </p>
 
-        <div style={{ width: "100%", overflowX: "auto" }}>
+        <div className="tableWrap">
           <table style={{ width: "100%" }}>
             <thead>
               <tr>
