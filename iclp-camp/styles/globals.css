@@ -269,10 +269,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
 /* ---------- 5. Superficies ---------- */
 .card {
+  --card-pad: 18px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 18px;
+  padding: var(--card-pad);
   margin: 14px 0;
   box-shadow: var(--sh-sm);
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
@@ -280,7 +281,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .card > :first-child { margin-top: 0; }
 .card > :last-child { margin-bottom: 0; }
 .card.is-hoverable:hover { box-shadow: var(--sh-md); border-color: var(--border-strong); }
-.cardTight { padding: 14px; }
+.cardTight { --card-pad: 14px; padding: var(--card-pad); }
 .card-flat { box-shadow: none; }
 .card-soft { background: var(--brand-050); border-color: rgba(47, 93, 80, 0.14); }
 
@@ -832,24 +833,34 @@ tbody tr:last-child td { border-bottom: none; }
   box-shadow: var(--ring);
 }
 
-/* Pie de la tarjeta, no una tarjeta adentro de otra: sin borde ni sombra propios. */
+/* Suelta (paso 2): una barra propia, alineada con las tarjetas de arriba. */
 .stickyBar {
   position: sticky;
   bottom: 0;
   z-index: 40;
   display: flex;
   gap: 10px;
-  margin: 18px -18px -18px;
-  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  margin-top: 18px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   /* Opaca: si es traslucida se lee el formulario por debajo de los botones. */
   background: #fff;
   box-shadow: 0 -6px 18px rgba(22, 33, 29, 0.06);
 }
 .stickyBar .btn { flex: 1; padding: 13px 16px; border-radius: var(--r-md); font-weight: 800; }
-@media (max-width: 780px) {
-  .stickyBar { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+
+/* Dentro de una tarjeta (paso 1) es el pie de esa tarjeta: se funde con ella.
+   Los margenes negativos salen del padding real de la card, que cambia con .cardTight. */
+.card .stickyBar {
+  margin-left: calc(var(--card-pad) * -1);
+  margin-right: calc(var(--card-pad) * -1);
+  margin-bottom: calc(var(--card-pad) * -1);
+  padding-left: var(--card-pad);
+  padding-right: var(--card-pad);
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 
 /* Contador de personas (+ / -) */
