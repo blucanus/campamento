@@ -1066,6 +1066,71 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .grpThumb.is-empty { background: var(--brand-100); }
 
+/* Matriz color x talle */
+.matrixWrap { margin-top: 12px; }
+/* width auto: con width 100% las columnas se comprimen en vez de scrollear. */
+.matrix { width: auto; min-width: 100%; }
+.matrix thead th { text-align: center; }
+.matrix thead th.mxColor { text-align: left; }
+.matrix tbody td { text-align: center; }
+.matrix tbody td.mxColor { text-align: left; }
+.matrix tbody tr:hover { background: transparent; }
+
+.mxColor {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 1px 0 0 var(--border);
+}
+.matrix thead th.mxColor { background: var(--bg-2); }
+.matrix td, .matrix th { white-space: nowrap; }
+.mxColorCell { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+.mxThumb {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: #fff;
+}
+.mxThumb.is-empty { background: var(--brand-100); }
+
+/* max-width/min-width y no width: la regla global de inputs le gana en
+   especificidad, y sin min-width la celda colapsa en vez de scrollear. */
+.mxStock {
+  min-width: 64px;
+  max-width: 76px;
+  display: block;
+  margin: 0 auto;
+  padding: 7px 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+.mxStock::placeholder { font-weight: 400; }
+
+.mxFoot {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.mxFoot .grpPhoto { margin: 0; border: none; padding: 0; }
+.mxPhotos { display: grid; gap: 14px; margin-top: 12px; }
+@media (min-width: 780px) { .mxPhotos { grid-template-columns: 1fr 1fr; } }
+.mxPhotoItem {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px;
+  background: var(--bg-2);
+}
+
 .varList { display: grid; gap: 8px; margin-top: 12px; }
 .grpPrices { display: flex; gap: 10px; flex: 0 0 auto; }
 .grpPrices .varField input { width: 120px; }
