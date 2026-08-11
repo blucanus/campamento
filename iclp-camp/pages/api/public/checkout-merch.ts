@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { env } from "@/lib/env";
-import { createPreference } from "@/lib/mercadopago";
+import { createPreference, MP_PUBLIC_NAME } from "@/lib/mercadopago";
 import { Product } from "@/models/Product";
 import { ProductVariant } from "@/models/ProductVariant";
 import { MerchOrder } from "@/models/MerchOrder";
@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const externalReference = `merch-${String(order._id)}`;
 
     const pref = await createPreference({
-      title: "Merch Campamento ICLP",
+      title: `Merch ${MP_PUBLIC_NAME}`,
       quantity: 1,
       unit_price: totalARS,
 

@@ -4,10 +4,10 @@ import { requireStaff } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { registrationTotalARS } from "@/lib/pricing";
-import { getCampEdition } from "@/lib/campEdition";
 import {
   createPointPaymentIntent,
   listPointDevices,
+  MP_PUBLIC_NAME,
   setPointOperatingMode
 } from "@/lib/mercadopago";
 import { Registration } from "@/models/Registration";
@@ -69,7 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Esta inscripción ya está paga." });
   }
 
-  const camp = await getCampEdition();
   const total = await registrationTotalARS(reg);
 
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
@@ -79,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       deviceId,
       amountARS: total,
       externalReference: registrationId,
-      description: `Campamento ICLP ${camp.edition}`
+      description: MP_PUBLIC_NAME
     });
 
     await auditLog({

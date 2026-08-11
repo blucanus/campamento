@@ -2,7 +2,7 @@
 import { connectDB } from "@/lib/db";
 import { env } from "@/lib/env";
 import { computeTotalARS } from "@/lib/pricing";
-import { createPreference } from "@/lib/mercadopago";
+import { createPreference, MP_PUBLIC_NAME } from "@/lib/mercadopago";
 import { Product } from "@/models/Product";
 import { ProductVariant } from "@/models/ProductVariant";
 import { Registration } from "@/models/Registration";
@@ -188,7 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ Opción A: un solo item total para el campa (ya incluye el descuento familiar)
   const items = [
     {
-      title: "Inscripción Campamento ICLP",
+      title: `Inscripción ${MP_PUBLIC_NAME}`,
       quantity: 1,
       unit_price: campTotal,
       currency_id: "ARS" as const

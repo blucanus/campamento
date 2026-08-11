@@ -3,12 +3,12 @@ import { connectDB } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { registrationTotalARS } from "@/lib/pricing";
-import { getCampEdition } from "@/lib/campEdition";
 import {
   createQrOrder,
   getCollectorId,
   getOrCreateQrPos,
   getOrCreateQrStore,
+  MP_PUBLIC_NAME,
   QR_STORE_EXTERNAL_ID
 } from "@/lib/mercadopago";
 import { sanitizePosId } from "@/lib/pure";
@@ -39,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
 
   try {
-    const camp = await getCampEdition();
     const collectorId = await getCollectorId();
     const posId = sanitizePosId(env.MP_QR_POS_ID);
     const store = await getOrCreateQrStore(collectorId, QR_STORE_EXTERNAL_ID);
@@ -50,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       collectorId,
       externalPosId,
       externalReference: id,
-      title: `Campamento ICLP ${camp.edition}`,
+      title: MP_PUBLIC_NAME,
       totalAmount: total,
       notificationUrl: env.MP_NOTIFICATION_URL
     });

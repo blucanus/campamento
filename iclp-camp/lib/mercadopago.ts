@@ -104,8 +104,13 @@ export async function getCollectorId(): Promise<string> {
   return String(me?.id || "");
 }
 
-// Como figura dentro de Mercado Pago: la caja CAMP-01 dentro del local ICLP.
-const QR_STORE_NAME = "ICLP";
+// Nombre que ve el pagador en Mercado Pago. Nada de "ICLP" acá.
+export const MP_PUBLIC_NAME = "Campamento Primavera 2026";
+
+// Como figura dentro de Mercado Pago: la caja CAMP-01 dentro del local.
+const QR_STORE_NAME = MP_PUBLIC_NAME;
+// ponytail: el external_id sigue siendo "ICLP" porque es la clave con la que MP
+// encuentra la sucursal ya creada; cambiarlo crearía una sucursal duplicada.
 export const QR_STORE_EXTERNAL_ID = "ICLP";
 const QR_POS_NAME = "CAMP-01";
 
@@ -237,7 +242,7 @@ export async function createPointPaymentIntent(params: {
     method: "POST",
     body: JSON.stringify({
       amount: Math.round(params.amountARS * 100),
-      description: params.description || "Campamento ICLP",
+      description: params.description || MP_PUBLIC_NAME,
       additional_info: {
         external_reference: params.externalReference,
         print_on_terminal: true

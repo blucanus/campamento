@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { computeTotalARS } from "@/lib/pricing";
 import { getCampEdition } from "@/lib/campEdition";
-import { createPreference } from "@/lib/mercadopago";
+import { createPreference, MP_PUBLIC_NAME } from "@/lib/mercadopago";
 import { Registration } from "@/models/Registration";
 
 type ExtraLike = { name?: string; qty?: number; unitPrice?: number; attributes?: Record<string, string> };
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const extras: ExtraLike[] = Array.isArray(doc.extras) ? doc.extras : [];
   const items = [
     {
-      title: "Inscripción Campamento ICLP",
+      title: `Inscripción ${MP_PUBLIC_NAME}`,
       quantity: 1,
       unit_price: campTotal,
       currency_id: "ARS" as const
