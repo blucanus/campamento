@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
-import { normalizePhoneAR } from "@/lib/pure";
+import { normalizeAttendeeDiet, normalizePhoneAR } from "@/lib/pure";
 import {
   checkRegistrationAccess,
   consumeRegistrationAccessCode
@@ -35,7 +35,8 @@ function normalizePrimary(step1: any) {
 
 function sanitizeAttendees(attendees: any[]) {
   return (attendees || []).map((a: any) => {
-    const out = { ...a };
+    // La dieta se re-normaliza aca: el navegador manda lo que quiera.
+    const out = { ...a, ...normalizeAttendeeDiet(a) };
     const id = String(out?._id || "").trim();
     if (!id || !/^[a-fA-F0-9]{24}$/.test(id)) {
       delete (out as any)._id;

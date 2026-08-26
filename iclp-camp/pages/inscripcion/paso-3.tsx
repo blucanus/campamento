@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import { dietRestrictionsLabel } from "@/lib/pure";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -22,6 +23,8 @@ type Attendee = {
   age?: number;
   relation?: string;
   isPrimary?: boolean;
+  hasDietaryRestrictions?: boolean;
+  dietaryRestrictions?: string[];
 };
 
 type Step1 = {
@@ -128,6 +131,12 @@ export default function Paso3() {
       })
       .catch(() => setVariants([]));
   }, []);
+
+  // Quienes marcaron restricciones no comen del menu base.
+  const conDieta = useMemo(
+    () => attendees.filter((a) => dietRestrictionsLabel(a.dietaryRestrictions)),
+    [attendees]
+  );
 
   const cartArr: CartItem[] = useMemo(() => {
     return Object.entries(cart)
@@ -327,21 +336,39 @@ export default function Paso3() {
             </div>
           ) : null}
 
+          {conDieta.length ? (
+            <div className="alert warning" style={{ marginTop: 12 }}>
+              <b>Menú exclusivo:</b>{" "}
+              {conDieta.length === 1 ? "1 persona no come" : `${conDieta.length} personas no comen`}{" "}
+              del menú base. La cocina les prepara un menú aparte:{" "}
+              {conDieta
+                .map((a, i) => `${a.firstName || `Persona #${i + 1}`} (${dietRestrictionsLabel(a.dietaryRestrictions)})`)
+                .join(", ")}
+              .
+            </div>
+          ) : null}
+
           {attendees.length ? (
             <details className="peopleBox">
               <summary>Ver las {attendees.length} persona{attendees.length === 1 ? "" : "s"}</summary>
               <div className="peopleList">
-                {attendees.map((a, i) => (
-                  <div className="peopleRow" key={`${a.dni || i}`}>
-                    <div>
-                      <b>{a.firstName} {a.lastName}</b>
-                      <div className="muted" style={{ fontSize: 12.5 }}>
-                        {a.relation || "Integrante"}{a.dni ? ` · DNI ${a.dni}` : ""}
+                {attendees.map((a, i) => {
+                  const dieta = dietRestrictionsLabel(a.dietaryRestrictions);
+                  return (
+                    <div className="peopleRow" key={`${a.dni || i}`}>
+                      <div>
+                        <b>{a.firstName} {a.lastName}</b>
+                        <div className="muted" style={{ fontSize: 12.5 }}>
+                          {a.relation || "Integrante"}{a.dni ? ` · DNI ${a.dni}` : ""}
+                        </div>
+                      </div>
+                      <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                        {dieta ? <span className="badge warning">Dieta: {dieta}</span> : null}
+                        <span className="badge">{Number(a.age || 0)} años</span>
                       </div>
                     </div>
-                    <span className="badge">{Number(a.age || 0)} años</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </details>
           ) : null}

@@ -903,6 +903,79 @@ tbody tr:last-child td { border-bottom: none; }
 .stepperValue b { font-size: 21px; font-weight: 900; color: var(--brand-800); line-height: 1; }
 .stepperValue span { font-size: 13.5px; color: var(--brand-700); font-weight: 600; line-height: 1; }
 
+/* Restricciones alimentarias (paso 2) */
+.dietBox {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.dietSwitch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+  font-size: 15px;
+}
+.dietSwitch input { width: 20px; height: 20px; accent-color: var(--brand-700); cursor: pointer; }
+
+.dietOptions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+.dietOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-2);
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.dietOption:hover { border-color: var(--brand-500); background: var(--brand-050); }
+.dietOption input { width: 18px; height: 18px; accent-color: var(--amber); cursor: pointer; }
+.dietOption.isActive {
+  border-color: rgba(227, 154, 34, 0.55);
+  background: var(--amber-100);
+  color: #7d5205;
+}
+
+.dietWarning {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 18px;
+  border: 3px solid var(--amber);
+  border-radius: var(--r-lg);
+  background: var(--amber-100);
+  box-shadow: var(--sh-md);
+}
+.dietWarningIcon { font-size: 34px; line-height: 1; flex: 0 0 auto; }
+.dietWarningTitle {
+  display: block;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #7d5205;
+}
+.dietWarningText { margin: 8px 0 0; font-size: 15px; line-height: 1.5; color: #5c3d04; }
+
+@media (max-width: 520px) {
+  .dietWarning { padding: 14px; gap: 10px; }
+  .dietWarningIcon { font-size: 26px; }
+  .dietWarningTitle { font-size: 18px; }
+  .dietWarningText { font-size: 14px; }
+}
+
 .summaryBox { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; }
 @media (max-width: 900px) { .summaryBox { grid-template-columns: 1fr; } }
 

@@ -3,6 +3,9 @@ import {
   archiveCollectionName,
   bumpAge,
   computeCampTotal,
+  dietRestrictionsLabel,
+  normalizeAttendeeDiet,
+  normalizeDietRestrictions,
   normalizeDni,
   normalizePhoneAR,
   resolveTierPrice,
@@ -112,3 +115,37 @@ assert.equal(
 );
 
 console.log("ok");
+
+// Restricciones alimentarias
+assert.deepEqual(normalizeDietRestrictions(["celiaco", "celiaco"]), ["celiaco"]);
+assert.deepEqual(normalizeDietRestrictions(["VEGETARIANO", " celiaco "]), ["celiaco", "vegetariano"]);
+assert.deepEqual(normalizeDietRestrictions(["vegano", ""]), []); // opciones que no existen se descartan
+assert.deepEqual(normalizeDietRestrictions(null), []);
+// siempre en el mismo orden, sin importar como llegaron
+assert.deepEqual(
+  normalizeDietRestrictions(["vegetariano", "hipertension"]),
+  ["hipertension", "vegetariano"]
+);
+
+assert.equal(dietRestrictionsLabel(["celiaco", "vegetariano"]), "Celíaco + Vegetariano");
+assert.equal(dietRestrictionsLabel([]), "");
+
+// El que no marca nada come del menu base
+assert.deepEqual(normalizeAttendeeDiet({ dietaryRestrictions: [] }), {
+  hasDietaryRestrictions: false,
+  dietaryRestrictions: [],
+  diet: "base"
+});
+
+// Marcar el check sin elegir opciones tampoco lo saca del menu base
+assert.deepEqual(normalizeAttendeeDiet({ hasDietaryRestrictions: true, dietaryRestrictions: [] }), {
+  hasDietaryRestrictions: false,
+  dietaryRestrictions: [],
+  diet: "base"
+});
+
+assert.deepEqual(normalizeAttendeeDiet({ dietaryRestrictions: ["hipertension"] }), {
+  hasDietaryRestrictions: true,
+  dietaryRestrictions: ["hipertension"],
+  diet: "Hipertensión"
+});

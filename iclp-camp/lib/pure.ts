@@ -151,3 +151,52 @@ export function archiveCollectionName(prefix: string, edition: string) {
     .replace(/^_+|_+$/g, "");
   return `${prefix}_${slug || "sin_edicion"}`;
 }
+
+// ---- Restricciones alimentarias ----
+
+/**
+ * Quienes marcan alguna de estas opciones NO comen del menu base: la cocina les
+ * arma un menu aparte, asi que hay que poder contarlos antes del campa.
+ */
+export const DIET_RESTRICTIONS = [
+  { value: "hipertension", label: "Hipertensión" },
+  { value: "celiaco", label: "Celíaco" },
+  { value: "vegetariano", label: "Vegetariano" }
+] as const;
+
+export type DietRestriction = (typeof DIET_RESTRICTIONS)[number]["value"];
+
+const DIET_VALUES = DIET_RESTRICTIONS.map((d) => d.value) as string[];
+
+/** Deja solo opciones validas, sin repetidos y siempre en el mismo orden. */
+export function normalizeDietRestrictions(input: unknown): DietRestriction[] {
+  const list = Array.isArray(input) ? input : [];
+  const picked = new Set(
+    list.map((v) => String(v || "").trim().toLowerCase()).filter((v) => DIET_VALUES.includes(v))
+  );
+  return DIET_RESTRICTIONS.filter((d) => picked.has(d.value)).map((d) => d.value);
+}
+
+/** "Celíaco + Vegetariano" (vacio si no tiene ninguna). */
+export function dietRestrictionsLabel(input: unknown) {
+  const list = normalizeDietRestrictions(input);
+  return list
+    .map((v) => DIET_RESTRICTIONS.find((d) => d.value === v)?.label || v)
+    .join(" + ");
+}
+
+/**
+ * Normaliza la dieta de un integrante. `diet` se sigue guardando como texto
+ * porque lo usan los reportes y la exportacion desde antes.
+ */
+export function normalizeAttendeeDiet(attendee: unknown) {
+  const a = (attendee || {}) as Record<string, unknown>;
+  const dietaryRestrictions = normalizeDietRestrictions(a.dietaryRestrictions);
+  const hasDietaryRestrictions = dietaryRestrictions.length > 0;
+
+  return {
+    hasDietaryRestrictions,
+    dietaryRestrictions,
+    diet: hasDietaryRestrictions ? dietRestrictionsLabel(dietaryRestrictions) : "base"
+  };
+}
