@@ -161,7 +161,7 @@ export function archiveCollectionName(prefix: string, edition: string) {
 export const DIET_RESTRICTIONS = [
   { value: "hipertension", label: "Hipertensión" },
   { value: "celiaco", label: "Celíaco" },
-  { value: "vegetariano", label: "Vegetariano" }
+  { value: "diabetico", label: "Diabético" }
 ] as const;
 
 export type DietRestriction = (typeof DIET_RESTRICTIONS)[number]["value"];
@@ -177,7 +177,7 @@ export function normalizeDietRestrictions(input: unknown): DietRestriction[] {
   return DIET_RESTRICTIONS.filter((d) => picked.has(d.value)).map((d) => d.value);
 }
 
-/** "Celíaco + Vegetariano" (vacio si no tiene ninguna). */
+/** "Celíaco + Diabético" (vacio si no tiene ninguna). */
 export function dietRestrictionsLabel(input: unknown) {
   const list = normalizeDietRestrictions(input);
   return list

@@ -118,16 +118,16 @@ console.log("ok");
 
 // Restricciones alimentarias
 assert.deepEqual(normalizeDietRestrictions(["celiaco", "celiaco"]), ["celiaco"]);
-assert.deepEqual(normalizeDietRestrictions(["VEGETARIANO", " celiaco "]), ["celiaco", "vegetariano"]);
+assert.deepEqual(normalizeDietRestrictions(["DIABETICO", " celiaco "]), ["celiaco", "diabetico"]);
 assert.deepEqual(normalizeDietRestrictions(["vegano", ""]), []); // opciones que no existen se descartan
 assert.deepEqual(normalizeDietRestrictions(null), []);
 // siempre en el mismo orden, sin importar como llegaron
 assert.deepEqual(
-  normalizeDietRestrictions(["vegetariano", "hipertension"]),
-  ["hipertension", "vegetariano"]
+  normalizeDietRestrictions(["diabetico", "hipertension"]),
+  ["hipertension", "diabetico"]
 );
 
-assert.equal(dietRestrictionsLabel(["celiaco", "vegetariano"]), "Celíaco + Vegetariano");
+assert.equal(dietRestrictionsLabel(["celiaco", "diabetico"]), "Celíaco + Diabético");
 assert.equal(dietRestrictionsLabel([]), "");
 
 // El que no marca nada come del menu base
