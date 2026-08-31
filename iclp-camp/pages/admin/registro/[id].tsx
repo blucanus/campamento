@@ -10,12 +10,21 @@ export default function Registro() {
   const { query, back } = useRouter();
   const id = String(query.id || "");
   const [reg, setReg] = useState<any>(null);
+  const [role, setRole] = useState("");
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [busySuper, setBusySuper] = useState(false);
   const toast = useToast();
 
+  const isSuper = role === "superadmin";
+
   async function load() {
-    const r = await fetch("/api/admin/registration?id=" + id);
+    const [rm, r] = await Promise.all([
+      fetch("/api/admin/me"),
+      fetch("/api/admin/registration?id=" + id)
+    ]);
+    const me = await rm.json().catch(() => ({}));
+    setRole(String(me?.admin?.role || ""));
     const j = await r.json();
     setReg(j);
   }
@@ -186,9 +195,64 @@ export default function Registro() {
     }
   }
 
-  const showCopyPay =
-    !!reg?.payment?.initPoint &&
-    String(reg?.payment?.status || "").toLowerCase() !== "approved";
+  async function adjustDays(optionDays: string, daysDetail: string) {
+    setBusySuper(true);
+    try {
+      const r = await fetch("/api/admin/adjust-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: reg._id, optionDays, daysDetail })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "No se pudo modificar");
+
+      await load();
+
+      if (j.due > 0) {
+        toast.show(
+          `Nuevo total $${Number(j.totalAfter).toLocaleString("es-AR")}. Falta cobrar $${Number(j.due).toLocaleString("es-AR")}.`,
+          "success"
+        );
+      } else if (j.credit > 0) {
+        toast.show(
+          `Nuevo total $${Number(j.totalAfter).toLocaleString("es-AR")}. Quedan $${Number(j.credit).toLocaleString("es-AR")} a favor: devolvelos a mano.`,
+          "success"
+        );
+      } else {
+        toast.show("Días actualizados. No hay diferencia a cobrar.", "success");
+      }
+    } catch (e: any) {
+      toast.show(e?.message || "No se pudo modificar", "danger");
+    } finally {
+      setBusySuper(false);
+    }
+  }
+
+  async function refundRegistration() {
+    if (!window.confirm("¿Cancelar la inscripción y devolver el pago por Mercado Pago? No se puede deshacer.")) return;
+
+    setBusySuper(true);
+    try {
+      const r = await fetch("/api/admin/refund-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId: reg._id })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "No se pudo devolver el pago");
+
+      await load();
+      toast.show("Inscripción cancelada y pago devuelto.", "success");
+    } catch (e: any) {
+      toast.show(e?.message || "No se pudo devolver el pago", "danger");
+    } finally {
+      setBusySuper(false);
+    }
+  }
+
+  const payStatus = String(reg?.payment?.status || "").toLowerCase();
+  const chargeable = payStatus !== "approved" && payStatus !== "refunded";
+  const showCopyPay = !!reg?.payment?.initPoint && chargeable;
 
   const startedAtLabel = reg?.createdAt
     ? new Date(reg.createdAt).toLocaleString("es-AR")
@@ -226,6 +290,11 @@ export default function Registro() {
             <div style={{ opacity: 0.85, marginBottom: 10 }}>
               <b>Fecha de pago:</b> {paidAtLabel} &nbsp;|&nbsp; <b>Codigo usado:</b> {accessCodeLabel}
             </div>
+            {Number(reg?.payment?.paidAmount || 0) > 0 ? (
+              <div style={{ opacity: 0.85, marginBottom: 10 }}>
+                <b>Ya cobrado:</b> ${Number(reg.payment.paidAmount).toLocaleString("es-AR")}
+              </div>
+            ) : null}
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <span><b>Pago:</b></span>
@@ -268,7 +337,7 @@ export default function Registro() {
               </button>
             ) : null}
 
-            {String(reg?.payment?.status || "").toLowerCase() !== "approved" ? (
+            {chargeable ? (
               <a className="btn secondary" href={`/staff/cobrar/${reg._id}`}>
                 💳 Cobrar (QR / posnet)
               </a>
@@ -327,6 +396,9 @@ export default function Registro() {
         )}
       </div>
 
+      {/* Solo superadmin: cambiar dias / cancelar */}
+      {isSuper ? <SuperAdminCard reg={reg} busy={busySuper} onAdjust={adjustDays} onRefund={refundRegistration} /> : null}
+
       {/* Integrantes */}
       <div className="card" style={{ marginTop: 12 }}>
         <h3>Integrantes</h3>
@@ -349,6 +421,88 @@ export default function Registro() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+function SuperAdminCard({
+  reg,
+  busy,
+  onAdjust,
+  onRefund
+}: {
+  reg: any;
+  busy: boolean;
+  onAdjust: (optionDays: string, daysDetail: string) => void;
+  onRefund: () => void;
+}) {
+  const [optionDays, setOptionDays] = useState(String(reg.step1?.optionDays || "full"));
+  const [oneDay, setOneDay] = useState(String(reg.step1?.oneDay || reg.step1?.daysDetail || "sabado"));
+  const [twoDays, setTwoDays] = useState(
+    String(reg.step1?.twoDays || reg.step1?.daysDetail || "viernes-sabado")
+  );
+
+  const status = String(reg.payment?.status || "").toLowerCase();
+  const detail = optionDays === "1" ? oneDay : optionDays === "2" ? twoDays : "";
+
+  return (
+    <div className="card" style={{ marginTop: 12, borderLeft: "4px solid #b91c1c" }}>
+      <h3>Solo superadmin</h3>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+        <span><b>Días:</b></span>
+
+        <select value={optionDays} onChange={(e) => setOptionDays(e.target.value)}>
+          <option value="1">1 día</option>
+          <option value="2">2 días</option>
+          <option value="full">Todo el campa</option>
+        </select>
+
+        {optionDays === "1" ? (
+          <select value={oneDay} onChange={(e) => setOneDay(e.target.value)}>
+            <option value="viernes">Viernes</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+          </select>
+        ) : null}
+
+        {optionDays === "2" ? (
+          <select value={twoDays} onChange={(e) => setTwoDays(e.target.value)}>
+            <option value="viernes-sabado">Viernes + Sábado</option>
+            <option value="sabado-domingo">Sábado + Domingo</option>
+          </select>
+        ) : null}
+
+        <button className="btn" type="button" disabled={busy || status === "refunded"} onClick={() => onAdjust(optionDays, detail)}>
+          {busy ? "Guardando..." : "Modificar y cobrar diferencia"}
+        </button>
+      </div>
+
+      <p style={{ opacity: 0.8, marginTop: 8 }}>
+        Si el nuevo total es mayor, la inscripción vuelve a quedar pendiente y el QR / posnet / link
+        cobran solo la diferencia.
+      </p>
+
+      <hr style={{ margin: "14px 0", opacity: 0.2 }} />
+
+      {status === "refunded" ? (
+        <p style={{ fontWeight: 800, color: "#b91c1c" }}>
+          Cancelada y devuelta{reg.payment?.refundedBy ? ` por ${reg.payment.refundedBy}` : ""}.
+        </p>
+      ) : (
+        <button
+          className="btn danger"
+          type="button"
+          disabled={busy || status !== "approved"}
+          onClick={onRefund}
+        >
+          {busy ? "Procesando..." : "Cancelar inscripción y devolver el pago"}
+        </button>
+      )}
+
+      {status !== "approved" && status !== "refunded" ? (
+        <p style={{ opacity: 0.8, marginTop: 8 }}>Solo se puede devolver una inscripción paga.</p>
+      ) : null}
+    </div>
   );
 }
 

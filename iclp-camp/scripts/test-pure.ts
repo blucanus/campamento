@@ -103,6 +103,22 @@ assert.equal(
   31500
 );
 
+// Se anoto 1 dia y despues va a todo el campa: se cobra la diferencia, no el total
+const dia = computeCampTotal({
+  attendees: [{ age: 40 }],
+  optionDays: "1",
+  pricing,
+  todayISO: "2026-01-15"
+}).total;
+const campa = computeCampTotal({
+  attendees: [{ age: 40 }],
+  optionDays: "full",
+  pricing,
+  todayISO: "2026-01-15"
+}).total;
+assert.equal(Math.max(0, campa - dia), 31500);
+assert.equal(Math.max(0, dia - campa), 0); // si baja los dias no queda saldo a cobrar
+
 // Sin descuentos configurados no se aplica ninguno
 assert.equal(
   computeCampTotal({

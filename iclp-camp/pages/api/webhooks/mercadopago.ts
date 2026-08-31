@@ -81,6 +81,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     reg.payment.status = newStatus;
     reg.payment.paymentId = String(payment.id || "");
     reg.payment.lastEventAt = new Date();
+
+    // Lo cobrado se acumula solo en la transicion a approved: MP reenvia el mismo
+    // evento y sin ese guard una diferencia se contaria dos veces.
+    if (newStatus === "approved" && prevStatus !== "approved") {
+      reg.payment.paidAmount =
+        Number(reg.payment.paidAmount || 0) + Number(payment.transaction_amount || 0);
+    }
+
     await reg.save();
 
     // ✅ Si pasa a approved y antes no lo era -> descontar stock + enviar mail confirmado

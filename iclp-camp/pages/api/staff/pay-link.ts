@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { computeTotalARS } from "@/lib/pricing";
+import { computeTotalARS, registrationDueARS } from "@/lib/pricing";
 import { getCampEdition } from "@/lib/campEdition";
 import { createPreference, MP_PUBLIC_NAME } from "@/lib/mercadopago";
 import { Registration } from "@/models/Registration";
@@ -26,8 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const doc = await Registration.findById(id);
   if (!doc) return res.status(404).json({ error: "Inscripción no encontrada" });
 
-  if (String(doc.payment?.status || "").toLowerCase() === "approved") {
+  const payStatus = String(doc.payment?.status || "").toLowerCase();
+  if (payStatus === "approved") {
     return res.status(400).json({ error: "Esta inscripción ya está paga." });
+  }
+  if (payStatus === "refunded") {
+    return res.status(400).json({ error: "Esta inscripción está cancelada." });
   }
 
   if (doc.payment?.initPoint) {
@@ -42,27 +46,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const campTotal = Number(base.campTotal || 0);
 
   const extras: ExtraLike[] = Array.isArray(doc.extras) ? doc.extras : [];
-  const items = [
-    {
-      title: `Inscripción ${MP_PUBLIC_NAME}`,
-      quantity: 1,
-      unit_price: campTotal,
-      currency_id: "ARS" as const
-    },
-    ...extras.map((x) => ({
-      title: String(x?.name || "Producto"),
-      quantity: Number(x?.qty || 0),
-      unit_price: Number(x?.unitPrice || 0),
-      currency_id: "ARS" as const
-    }))
-  ].filter((x) => x.quantity > 0 && x.unit_price > 0);
+  const paid = Number(doc.payment?.paidAmount || 0);
 
-  if (!items.length) return res.status(400).json({ error: "El total a cobrar es 0." });
+  // Si ya pago una parte (cambio de dias, por ejemplo) el link cobra solo la
+  // diferencia: el detalle item por item no cerraria con el monto.
+  const items = paid > 0
+    ? [
+        {
+          title: `Diferencia ${MP_PUBLIC_NAME}`,
+          quantity: 1,
+          unit_price: await registrationDueARS(doc),
+          currency_id: "ARS" as const
+        }
+      ]
+    : [
+        {
+          title: `Inscripción ${MP_PUBLIC_NAME}`,
+          quantity: 1,
+          unit_price: campTotal,
+          currency_id: "ARS" as const
+        },
+        ...extras.map((x) => ({
+          title: String(x?.name || "Producto"),
+          quantity: Number(x?.qty || 0),
+          unit_price: Number(x?.unitPrice || 0),
+          currency_id: "ARS" as const
+        }))
+      ];
+
+  const payable = items.filter((x) => x.quantity > 0 && x.unit_price > 0);
+
+  if (!payable.length) return res.status(400).json({ error: "El total a cobrar es 0." });
 
   const email = String(doc.primary?.email || doc.step1?.email || "").trim();
 
   const pref = await createPreference({
-    items,
+    items: payable,
     external_reference: String(doc._id),
     payer_email: email,
     notification_url: env.MP_NOTIFICATION_URL,

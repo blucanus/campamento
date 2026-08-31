@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { env } from "@/lib/env";
-import { registrationTotalARS } from "@/lib/pricing";
+import { registrationDueARS } from "@/lib/pricing";
 import {
   createPointPaymentIntent,
   listPointDevices,
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (regId) {
       await connectDB();
       const reg = await Registration.findById(regId).lean();
-      if (reg) total = await registrationTotalARS(reg);
+      if (reg) total = await registrationDueARS(reg);
     }
 
     try {
@@ -64,11 +64,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const reg = await Registration.findById(registrationId).lean();
   if (!reg) return res.status(404).json({ error: "Inscripción no encontrada" });
-  if (String(reg.payment?.status || "").toLowerCase() === "approved") {
+  const payStatus = String(reg.payment?.status || "").toLowerCase();
+  if (payStatus === "approved") {
     return res.status(400).json({ error: "Esta inscripción ya está paga." });
   }
+  if (payStatus === "refunded") {
+    return res.status(400).json({ error: "Esta inscripción está cancelada." });
+  }
 
-  const total = await registrationTotalARS(reg);
+  const total = await registrationDueARS(reg);
 
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
 

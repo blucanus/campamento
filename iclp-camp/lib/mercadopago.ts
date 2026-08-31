@@ -64,6 +64,32 @@ export async function createPreference(params: CreatePreferenceMulti | CreatePre
   return r.json() as Promise<{ id: string; init_point: string; sandbox_init_point?: string }>;
 }
 
+/**
+ * Devuelve la plata al inscripto. Sin monto = devolucion total.
+ * La idempotency key evita que un doble click devuelva dos veces.
+ *
+ * ponytail: usa el token general aunque el cobro haya salido por el QR; es la
+ * misma cuenta y es el token con el que ya se consultan esos pagos.
+ */
+export async function refundPayment(paymentId: string, idempotencyKey: string) {
+  const r = await fetch(
+    `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`,
+        "X-Idempotency-Key": idempotencyKey
+      },
+      body: "{}"
+    }
+  );
+
+  const text = await r.text();
+  if (!r.ok) throw new Error(`MP refund ${paymentId}: ${text || r.status}`);
+  return text ? JSON.parse(text) : {};
+}
+
 // ---- QR interoperable (Mercado Pago, Cuenta DNI, MODO, etc.) ----
 
 async function mpApi(path: string, init?: RequestInit) {

@@ -53,7 +53,7 @@ export function computeTotalARS(step1: any, attendees: any[], pricing?: Pricing 
   };
 }
 
-/** Total a cobrar de una inscripcion ya guardada: campa + productos. Solo server. */
+/** Total de una inscripcion ya guardada: campa + productos. Solo server. */
 export async function registrationTotalARS(reg: {
   step1?: unknown;
   attendees?: unknown[];
@@ -66,4 +66,15 @@ export async function registrationTotalARS(reg: {
     0
   );
   return Number(base.campTotal || 0) + extras;
+}
+
+/** Lo que falta cobrar: total menos lo ya cobrado (sirve para cobrar diferencias). */
+export async function registrationDueARS(reg: {
+  step1?: unknown;
+  attendees?: unknown[];
+  extras?: ExtraLike[];
+  payment?: { paidAmount?: number } | null;
+}) {
+  const total = await registrationTotalARS(reg);
+  return Math.max(0, total - Number(reg.payment?.paidAmount || 0));
 }

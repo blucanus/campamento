@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { registrationTotalARS } from "@/lib/pricing";
+import { registrationDueARS } from "@/lib/pricing";
 import {
   createQrOrder,
   getCollectorId,
@@ -31,11 +31,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const reg = await Registration.findById(id).lean();
   if (!reg) return res.status(404).json({ error: "Inscripción no encontrada" });
-  if (String(reg.payment?.status || "").toLowerCase() === "approved") {
+  const payStatus = String(reg.payment?.status || "").toLowerCase();
+  if (payStatus === "approved") {
     return res.status(400).json({ error: "Esta inscripción ya está paga." });
   }
+  if (payStatus === "refunded") {
+    return res.status(400).json({ error: "Esta inscripción está cancelada." });
+  }
 
-  const total = await registrationTotalARS(reg);
+  const total = await registrationDueARS(reg);
   if (total <= 0) return res.status(400).json({ error: "El total a cobrar es 0." });
 
   try {

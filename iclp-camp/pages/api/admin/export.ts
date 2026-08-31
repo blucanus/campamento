@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const format = String(req.query.format || "csv");
   await connectDB();
 
-  const regs = await Registration.find({}).lean();
+  const regs = await Registration.find({ "payment.status": { $ne: "refunded" } }).lean();
 
   const rows: any[] = [];
   for (const reg of regs) {

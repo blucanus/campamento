@@ -90,11 +90,18 @@ const RegistrationSchema = new Schema(
     },
 
     payment: {
-      status: { type: String, default: "pending" }, // pending | approved | rejected
+      status: { type: String, default: "pending" }, // pending | approved | rejected | refunded
       preferenceId: String,
       paymentId: String,
       initPoint: String,
-      lastEventAt: Date
+      lastEventAt: Date,
+
+      // Plata ya cobrada. Si despues cambian la compra (1 dia -> 3 dias) se cobra
+      // la diferencia contra esto, no el total de nuevo.
+      paidAmount: { type: Number, default: 0 },
+
+      refundedAt: { type: Date, default: null },
+      refundedBy: { type: String, default: "" }
     },
 
     // Codigo de acceso unico usado cuando la inscripcion general esta cerrada
