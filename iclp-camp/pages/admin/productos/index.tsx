@@ -20,9 +20,17 @@ export default function ProductosAdmin() {
   return (
     <Layout title="Productos">
       <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <h2 style={{ margin: 0 }}>Productos</h2>
-          <Link className="btn secondary" href="/admin">← Volver</Link>
+        <div className="row-between">
+          <div>
+            <h2 style={{ margin: 0 }}>Productos</h2>
+            <div className="muted" style={{ fontSize: 13 }}>
+              El stock, las fotos y los precios se cargan en Variantes.
+            </div>
+          </div>
+          <div className="row">
+            <Link className="btn" href="/admin/variants">Cargar / editar variantes</Link>
+            <Link className="btn secondary" href="/admin">← Volver</Link>
+          </div>
         </div>
 
         {err ? <div className="alert" style={{ marginTop: 10 }}>{err}</div> : null}
@@ -47,7 +55,8 @@ export default function ProductosAdmin() {
                 <td>{p.activeCount}</td>
                 <td>{p.stockTotal}</td>
                 <td style={{ textAlign: "right" }}>
-                  <Link className="btn" href={`/admin/productos/${p._id}`}>Variantes</Link>
+                  {/* /admin/productos/[id] no existe: la carga real vive en /admin/variants. */}
+                  <Link className="btn sm" href="/admin/variants">Ver variantes</Link>
                 </td>
               </tr>
             ))}

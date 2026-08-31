@@ -1,4 +1,10 @@
 import Layout from "@/components/Layout";
+import {
+  DIET_RESTRICTIONS,
+  normalizeAttendeeDiet,
+  normalizeDietRestrictions,
+  type DietRestriction
+} from "@/lib/pure";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
@@ -12,6 +18,10 @@ const emptyPerson = () => ({
   relation: "Hijo/a",
   sex: "M",
   isPrimary: false,
+
+  // ✅ restricciones alimentarias (menu exclusivo)
+  hasDietaryRestrictions: false,
+  dietaryRestrictions: [] as string[],
 
   // ✅ autorización
   consentRequired: false,
@@ -126,6 +136,26 @@ export default function Paso2() {
     setAttendees((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
 
+  // Restricciones alimentarias: el check general habilita las opciones puntuales.
+  function toggleDietSwitch(i: number, on: boolean) {
+    update(i, {
+      hasDietaryRestrictions: on,
+      dietaryRestrictions: on ? normalizeDietRestrictions(attendees[i]?.dietaryRestrictions) : []
+    });
+  }
+
+  function toggleDietRestriction(i: number, value: DietRestriction) {
+    const current = normalizeDietRestrictions(attendees[i]?.dietaryRestrictions);
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+
+    update(i, {
+      hasDietaryRestrictions: true,
+      dietaryRestrictions: normalizeDietRestrictions(next)
+    });
+  }
+
   function setPrimary(i: number) {
     setAttendees((prev) =>
       prev.map((p, idx) => {
@@ -168,6 +198,9 @@ export default function Paso2() {
     }
     if (String(a?.dni || "").replace(/\D/g, "").length < 6) return "Completá el DNI.";
     if (String(a?.age ?? "").trim() === "") return "Completá la edad.";
+    if (a?.hasDietaryRestrictions && !normalizeDietRestrictions(a?.dietaryRestrictions).length) {
+      return "Marcá qué restricción alimentaria tiene, o destildá la opción.";
+    }
     return "";
   }
 
@@ -265,10 +298,11 @@ export default function Paso2() {
     }
     if (!step1) return false;
 
-    // Normalizamos edades
+    // Normalizamos edades y dieta
     const normalizedLocal = attendees.map((a) => ({
       ...a,
-      age: ageNumOf(a)
+      age: ageNumOf(a),
+      ...normalizeAttendeeDiet(a)
     }));
 
     try {
@@ -383,10 +417,11 @@ export default function Paso2() {
       return;
     }
 
-    // Normalizamos edades
+    // Normalizamos edades y dieta
     const normalized = attendees.map((a) => ({
       ...a,
-      age: ageNumOf(a)
+      age: ageNumOf(a),
+      ...normalizeAttendeeDiet(a)
     }));
 
     // ✅ regla global: ¿hay principal > 18?
@@ -583,6 +618,75 @@ export default function Paso2() {
                       </select>
                     </div>
                   </div>
+
+                  {/* ✅ RESTRICCIONES ALIMENTARIAS */}
+                  {(() => {
+                    const picked = normalizeDietRestrictions(a.dietaryRestrictions);
+
+                    return (
+                      <div className="dietBox">
+                        <label className="dietSwitch">
+                          <input
+                            type="checkbox"
+                            checked={!!a.hasDietaryRestrictions}
+                            onChange={(e) => toggleDietSwitch(i, e.target.checked)}
+                          />
+                          <span>¿Tiene alguna restricción alimentaria?</span>
+                        </label>
+
+                        {!a.hasDietaryRestrictions ? (
+                          <div className="fieldHint">
+                            Si no marcás nada, come del menú base del campa.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="dietOptions">
+                              {DIET_RESTRICTIONS.map((opt) => {
+                                const on = picked.includes(opt.value);
+                                return (
+                                  <label
+                                    key={opt.value}
+                                    className={`dietOption ${on ? "isActive" : ""}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={on}
+                                      onChange={() => toggleDietRestriction(i, opt.value)}
+                                    />
+                                    <span>{opt.label}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+
+                            {picked.length ? (
+                              <div className="dietWarning" role="alert">
+                                <span className="dietWarningIcon" aria-hidden="true">⚠️</span>
+                                <div>
+                                  <strong className="dietWarningTitle">
+                                    NO PARTICIPA DEL MENÚ BASE
+                                  </strong>
+                                  <p className="dietWarningText">
+                                    Al elegir esta opción, <b>{a.firstName?.trim() || `la persona #${i + 1}`}</b>{" "}
+                                    queda fuera del menú común del campa: la cocina le prepara un{" "}
+                                    <b>menú exclusivo</b> para quienes marcaron estas restricciones.
+                                  </p>
+                                  <p className="dietWarningText">
+                                    Marcalo solo si de verdad lo necesita. Si te equivocaste, destildá
+                                    la opción.
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="fieldHint">
+                                Elegí al menos una opción, o destildá la pregunta de arriba.
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* ✅ AUTORIZACIÓN 15-17 SOLO si NO hay principal adulto */}
                   {req ? (

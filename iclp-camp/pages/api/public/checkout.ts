@@ -13,7 +13,7 @@ import {
 import { getCampEdition } from "@/lib/campEdition";
 import { saveCampers } from "@/lib/campers";
 import { requireStaff } from "@/lib/auth";
-import { normalizePhoneAR } from "@/lib/pure";
+import { normalizeAttendeeDiet, normalizePhoneAR } from "@/lib/pure";
 import { sendConfirmationEmail } from "@/lib/notify";
 import { mailPending } from "@/lib/templates";
 
@@ -21,7 +21,8 @@ type CartItem = { variantId: string; qty: number };
 
 function sanitizeAttendees(attendees: any[]) {
   return (attendees || []).map((a: any) => {
-    const out = { ...a };
+    // La dieta se re-normaliza aca: el navegador manda lo que quiera.
+    const out = { ...a, ...normalizeAttendeeDiet(a) };
     const id = String(out?._id || "").trim();
     if (!id || !/^[a-fA-F0-9]{24}$/.test(id)) {
       delete (out as any)._id;

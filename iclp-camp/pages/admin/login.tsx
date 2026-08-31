@@ -26,20 +26,40 @@ export default function Login() {
 
   return (
     <Layout title="Admin login">
-      <div className="card">
-        <h2>Login Admin</h2>
-        {err && <div className="alert">{err}</div>}
-        <form onSubmit={submit} className="grid2">
-          <div>
+      <div style={{ maxWidth: 420, margin: "6vh auto 0" }}>
+        <div className="card" style={{ padding: 24 }}>
+          <span className="badge info">Panel interno</span>
+          <h2 style={{ marginTop: 12 }}>Ingresar</h2>
+          <p className="muted" style={{ marginTop: -4 }}>
+            Acceso para el equipo de administración y staff.
+          </p>
+
+          {err && <div className="alert" style={{ marginBottom: 8 }}>{err}</div>}
+
+          <form onSubmit={submit}>
             <label>Email</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} required />
-          </div>
-          <div>
+            <input
+              type="email"
+              autoComplete="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={e=>setEmail(e.target.value)}
+              required
+            />
+
             <label>Clave</label>
-            <input type="password" value={pass} onChange={e=>setPass(e.target.value)} required />
-          </div>
-          <button className="btn">Entrar</button>
-        </form>
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={pass}
+              onChange={e=>setPass(e.target.value)}
+              required
+            />
+
+            <button className="btn block lg" style={{ marginTop: 18 }}>Entrar</button>
+          </form>
+        </div>
       </div>
     </Layout>
   );

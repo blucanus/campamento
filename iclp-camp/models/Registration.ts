@@ -16,7 +16,12 @@ const AttendeeSchema = new Schema(
     dni: String,
     age: Number,
     relation: String,
+
+    // Dieta: `diet` es el texto legible ("base" / "Celíaco + Diabético") que ya
+    // usaban reportes y exportacion; el detalle vive en dietaryRestrictions.
     diet: String,
+    hasDietaryRestrictions: { type: Boolean, default: false },
+    dietaryRestrictions: { type: [String], default: [] },
     sex: String,
     isPrimary: { type: Boolean, default: false },
     lodging: { type: LodgingSchema, default: {} },

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
 import { requireAdmin } from "@/lib/auth";
+import { dietRestrictionsLabel } from "@/lib/pure";
 import ExcelJS from "exceljs";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,7 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         dni: a.dni || "",
         edad: a.age ?? "",
         relacion: a.relation || "",
-        dieta: a.diet || "",
+        dieta: dietRestrictionsLabel(a.dietaryRestrictions) || a.diet || "base",
+        menuBase: dietRestrictionsLabel(a.dietaryRestrictions) ? "NO" : "SI",
         sexo: a.sex || "",
         habitacion: a.lodging?.room || "",
         tipo: a.lodging?.type || "",

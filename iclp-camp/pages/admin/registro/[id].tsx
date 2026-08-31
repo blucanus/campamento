@@ -1,5 +1,6 @@
 import Layout from "@/components/Layout";
 import Badge from "@/components/Badge";
+import { dietRestrictionsLabel } from "@/lib/pure";
 import { paymentStatusLabel, paymentStatusTone } from "@/lib/ui";
 import { ToastHost, useToast } from "@/components/Toast";
 import { useRouter } from "next/router";
@@ -287,7 +288,7 @@ export default function Registro() {
         <h3>Productos</h3>
 
         {hasExtras ? (
-          <div style={{ width: "100%", overflowX: "auto" }}>
+          <div className="tableWrap">
             <table style={{ width: "100%" }}>
               <thead>
                 <tr>
@@ -330,11 +331,11 @@ export default function Registro() {
       <div className="card" style={{ marginTop: 12 }}>
         <h3>Integrantes</h3>
 
-        <div style={{ width: "100%", overflowX: "auto" }}>
+        <div className="tableWrap">
           <table style={{ width: "100%" }}>
             <thead>
               <tr>
-                <th>Nombre</th><th>DNI</th><th>Edad</th><th>Relación</th><th>Sexo</th><th>Autorización</th>
+                <th>Nombre</th><th>DNI</th><th>Edad</th><th>Relación</th><th>Sexo</th><th>Dieta</th><th>Autorización</th>
                 <th>Habitación</th><th>Cama</th><th>Guardar</th>
 
               </tr>
@@ -357,6 +358,7 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
   const [bed, setBed] = useState(a.lodging?.bed || "none");
 
   const consentNeeded = a.age >= 15 && a.age <= 18;
+  const dieta = dietRestrictionsLabel(a.dietaryRestrictions);
 
   return (
     <tr>
@@ -365,6 +367,15 @@ function Row({ a, onSave }: { a: any; onSave: (l: any) => void }) {
       <td>{a.age}</td>
       <td>{a.relation}</td>
       <td>{a.sex}</td>
+
+      {/* ✅ Dieta: quien tiene restricciones no come del menu base */}
+      <td>
+        {dieta ? (
+          <span className="badge warning">{dieta}</span>
+        ) : (
+          <span style={{ opacity: 0.7 }}>Base</span>
+        )}
+      </td>
 
       {/* ✅ Autorización */}
       <td>

@@ -263,44 +263,32 @@ export default function Paso1() {
               <div>
                 <label>Cantidad de personas</label>
 
-                {/* Control + / - (sin escribir) */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6 }}>
+                {/* Solo + / -: el select duplicaba el mismo dato. */}
+                <div className="stepperNum">
                   <button
                     type="button"
-                    className="btn secondary"
+                    className="stepperBtn"
                     onClick={() => setCount(form.count - 1)}
                     disabled={form.count <= 1}
-                    aria-label="Restar"
-                    style={{ width: 56 }}
+                    aria-label="Restar una persona"
                   >
                     −
                   </button>
 
-                  <div className="badgePill" style={{ justifyContent: "center", minWidth: 90 }}>
-                    {form.count}
+                  <div className="stepperValue" aria-live="polite">
+                    <b>{form.count}</b>
+                    <span>persona{form.count === 1 ? "" : "s"}</span>
                   </div>
 
                   <button
                     type="button"
-                    className="btn secondary"
+                    className="stepperBtn"
                     onClick={() => setCount(form.count + 1)}
                     disabled={form.count >= 20}
-                    aria-label="Sumar"
-                    style={{ width: 56 }}
+                    aria-label="Sumar una persona"
                   >
                     +
                   </button>
-                </div>
-
-                {/* Alternativa rápida: select */}
-                <div style={{ marginTop: 10 }}>
-                  <label style={{ marginTop: 0, opacity: 0.75 }}>Elegir</label>
-                  <select value={form.count} onChange={(e) => setCount(Number(e.target.value))}>
-                    {Array.from({ length: 20 }).map((_, i) => {
-                      const v = i + 1;
-                      return <option key={v} value={v}>{v} persona{v === 1 ? "" : "s"}</option>;
-                    })}
-                  </select>
                 </div>
 
                 <div className="fieldHint">Incluye al familiar principal.</div>

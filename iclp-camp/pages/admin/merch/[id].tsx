@@ -180,7 +180,7 @@ export default function AdminMerchDetail() {
         <h3>Productos</h3>
 
         {items.length ? (
-          <div style={{ width: "100%", overflowX: "auto" }}>
+          <div className="tableWrap">
             <table style={{ width: "100%" }}>
               <thead>
                 <tr>

@@ -318,11 +318,11 @@ export default function Cobrar() {
                     {charging ? "Enviando..." : `Enviar ${money(total)} al posnet`}
                   </button>
 
-                  {needsPdv ? (
-                    <button className="btn secondary" type="button" onClick={setPdvMode}>
-                      Poner en modo PDV
-                    </button>
-                  ) : null}
+                  {/* Siempre a mano: si el posnet se desconfigura solo, hay que
+                      poder volver a mandarlo a PDV sin salir de esta pantalla. */}
+                  <button className="btn secondary" type="button" onClick={setPdvMode}>
+                    {needsPdv ? "Poner en modo PDV" : "Reactivar modo PDV"}
+                  </button>
                 </div>
 
                 {needsPdv ? (

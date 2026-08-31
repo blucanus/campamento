@@ -7,7 +7,6 @@ import { registrationTotalARS } from "@/lib/pricing";
 import {
   createPointPaymentIntent,
   listPointDevices,
-  MP_PUBLIC_NAME,
   setPointOperatingMode
 } from "@/lib/mercadopago";
 import { Registration } from "@/models/Registration";
@@ -78,7 +77,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       deviceId,
       amountARS: total,
       externalReference: registrationId,
-      description: MP_PUBLIC_NAME
+      // El posnet solo acepta alfanumerico en el ticket, sin guiones.
+      ticketNumber: `ICLP${registrationId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`
     });
 
     await auditLog({
