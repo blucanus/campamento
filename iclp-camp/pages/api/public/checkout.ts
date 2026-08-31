@@ -150,10 +150,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!item?.variantId || qty <= 0) continue;
 
     const v: any = await ProductVariant.findById(item.variantId);
-    if (!v || !v.isActive) return res.status(400).json({ error: "Variante no disponible" });
+    // ponytail: se saltea igual que /api/public/quote, asi lo que se cobra == lo que se mostro
+    if (!v || !v.isActive) continue;
 
     const stock = Number(v.stock || 0);
-    if (qty > stock) return res.status(400).json({ error: `Stock insuficiente (${v.sku})` });
+    if (qty > stock) continue;
 
     const p = prodById.get(String(v.productId));
     const name = p?.name || "Producto";
