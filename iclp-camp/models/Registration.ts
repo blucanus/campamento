@@ -101,7 +101,12 @@ const RegistrationSchema = new Schema(
       paidAmount: { type: Number, default: 0 },
 
       refundedAt: { type: Date, default: null },
-      refundedBy: { type: String, default: "" }
+      refundedBy: { type: String, default: "" },
+
+      // Cuanto se devolvio y si fue todo o solo la parte del campa
+      // (scope "camp" deja los productos pagos y entregables).
+      refundedAmount: { type: Number, default: 0 },
+      refundScope: { type: String, default: "" } // all | camp
     },
 
     // Codigo de acceso unico usado cuando la inscripcion general esta cerrada

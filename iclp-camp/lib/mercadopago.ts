@@ -71,7 +71,8 @@ export async function createPreference(params: CreatePreferenceMulti | CreatePre
  * ponytail: usa el token general aunque el cobro haya salido por el QR; es la
  * misma cuenta y es el token con el que ya se consultan esos pagos.
  */
-export async function refundPayment(paymentId: string, idempotencyKey: string) {
+/** Sin `amount` devuelve todo; con `amount` hace una devolucion parcial. */
+export async function refundPayment(paymentId: string, idempotencyKey: string, amount?: number) {
   const r = await fetch(
     `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}/refunds`,
     {
@@ -81,7 +82,7 @@ export async function refundPayment(paymentId: string, idempotencyKey: string) {
         Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`,
         "X-Idempotency-Key": idempotencyKey
       },
-      body: "{}"
+      body: amount && amount > 0 ? JSON.stringify({ amount }) : "{}"
     }
   );
 

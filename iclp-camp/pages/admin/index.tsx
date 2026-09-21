@@ -14,7 +14,10 @@ type RegistrationRow = {
   createdAt?: string;
   accessCodeUsed?: string;
 };
-type PaymentFilter = "todas" | "approved" | "pending";
+type RefundResult = { id: string; ok: boolean; error?: string; name?: string };
+type PaymentFilter = "todas" | "approved" | "pending" | "rejected" | "refunded";
+
+const CLOSED_STATES = ["approved", "refunded", "rejected", "cancelled"];
 
 function getErrorMessage(e: unknown) {
   if (e instanceof Error) return e.message;
@@ -38,6 +41,10 @@ export default function Admin() {
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todas");
   const [selected, setSelected] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [refunding, setRefunding] = useState(false);
+  const [role, setRole] = useState("");
+
+  const isSuper = role === "superadmin";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,7 +59,9 @@ export default function Admin() {
   const visible = data.filter((r) => {
     const status = String(r.payment?.status || "pending").toLowerCase();
     if (paymentFilter === "approved") return status === "approved";
-    if (paymentFilter === "pending") return status !== "approved";
+    if (paymentFilter === "refunded") return status === "refunded";
+    if (paymentFilter === "rejected") return status === "rejected" || status === "cancelled";
+    if (paymentFilter === "pending") return !CLOSED_STATES.includes(status);
     return true;
   });
 
@@ -88,6 +97,47 @@ export default function Admin() {
       alert(getErrorMessage(e) || "No se pudo eliminar");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function refundSelected(scope: "all" | "camp") {
+    if (!selected.length) {
+      alert("No seleccionaste ninguna inscripción.");
+      return;
+    }
+    const question =
+      scope === "camp"
+        ? `¿Cancelar ${selected.length} inscripción(es) y devolver SOLO el campa? Los productos quedan pagos y hay que entregarlos.`
+        : `¿Cancelar ${selected.length} inscripción(es) y devolver todo el pago? No se puede deshacer.`;
+    if (!confirm(question)) return;
+
+    setRefunding(true);
+    try {
+      const r = await fetch("/api/admin/refund-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationIds: selected, scope })
+      });
+      const j = await r.json().catch(() => ({} as Record<string, unknown>));
+      if (!r.ok) throw new Error(String(j.error || "No se pudo devolver"));
+
+      const results = Array.isArray(j.results) ? (j.results as RefundResult[]) : [];
+      const failed = results.filter((x) => !x.ok);
+
+      const detail = failed.length
+        ? `\n\nNo se pudo con ${failed.length}:\n` +
+          failed.map((f) => `- ${f.name || f.id}: ${f.error || ""}`).join("\n")
+        : "";
+
+      alert(
+        `Devueltas: ${Number(j.refunded || 0)} por $${Number(j.amount || 0).toLocaleString("es-AR")}.` +
+          detail
+      );
+      await load();
+    } catch (e: unknown) {
+      alert(getErrorMessage(e) || "No se pudo devolver");
+    } finally {
+      setRefunding(false);
     }
   }
 
@@ -149,6 +199,7 @@ export default function Admin() {
         return;
       }
       const j = await r.json().catch(() => ({}));
+      setRole(String(j?.admin?.role || ""));
       if (j?.admin?.role === "staff") window.location.href = "/staff";
     })();
   }, []);
@@ -239,8 +290,10 @@ export default function Admin() {
               style={{ width: 200 }}
             >
               <option value="todas">Todas</option>
-              <option value="approved">Solo pagadas</option>
+              <option value="approved">Pagadas</option>
               <option value="pending">Sin pagar</option>
+              <option value="rejected">Rechazadas</option>
+              <option value="refunded">Devueltas</option>
             </select>
             <span style={{ opacity: 0.75, fontSize: 13 }}>{visible.length} visibles</span>
           </div>
@@ -262,6 +315,28 @@ export default function Admin() {
             >
               🧹 Eliminar todas las que no pagaron
             </button>
+
+            {isSuper ? (
+              <>
+                <button
+                  className="btn danger"
+                  type="button"
+                  onClick={() => refundSelected("all")}
+                  disabled={refunding || !selected.length}
+                >
+                  💸 Cancelar y devolver ({selected.length})
+                </button>
+                <button
+                  className="btn danger"
+                  type="button"
+                  onClick={() => refundSelected("camp")}
+                  disabled={refunding || !selected.length}
+                  title="Devuelve solo el campa: los productos quedan pagos y hay que entregarlos"
+                >
+                  💸 Devolver solo el campa ({selected.length})
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 

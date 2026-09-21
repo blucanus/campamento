@@ -228,21 +228,28 @@ export default function Registro() {
     }
   }
 
-  async function refundRegistration() {
-    if (!window.confirm("¿Cancelar la inscripción y devolver el pago por Mercado Pago? No se puede deshacer.")) return;
+  async function refundRegistration(scope: "all" | "camp") {
+    const question =
+      scope === "camp"
+        ? "¿Cancelar la inscripción y devolver SOLO el campa? Los productos quedan pagos y hay que entregarlos. No se puede deshacer."
+        : "¿Cancelar la inscripción y devolver todo el pago por Mercado Pago? No se puede deshacer.";
+    if (!window.confirm(question)) return;
 
     setBusySuper(true);
     try {
       const r = await fetch("/api/admin/refund-registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId: reg._id })
+        body: JSON.stringify({ registrationId: reg._id, scope })
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || "No se pudo devolver el pago");
 
       await load();
-      toast.show("Inscripción cancelada y pago devuelto.", "success");
+      toast.show(
+        `Inscripción cancelada. Devuelto $${Number(j.amount || 0).toLocaleString("es-AR")}.`,
+        "success"
+      );
     } catch (e: any) {
       toast.show(e?.message || "No se pudo devolver el pago", "danger");
     } finally {
@@ -264,6 +271,12 @@ export default function Registro() {
       ? new Date(reg.payment.lastEventAt).toLocaleString("es-AR")
       : "-";
   const accessCodeLabel = String(reg?.accessCodeUsed || "").trim() || "-";
+
+  const totalARS = Number(reg?.total || 0);
+  const refundedARS = Number(reg?.payment?.refundedAmount || 0);
+  // Las inscripciones viejas no guardan lo cobrado: si esta aprobada, pago lo que vale hoy.
+  const paidARS = Number(reg?.payment?.paidAmount || 0) || (payStatus === "approved" ? totalARS : 0);
+  const money = (n: number) => `$${Number(n || 0).toLocaleString("es-AR")}`;
 
   if (!reg) {
     return (
@@ -290,11 +303,22 @@ export default function Registro() {
             <div style={{ opacity: 0.85, marginBottom: 10 }}>
               <b>Fecha de pago:</b> {paidAtLabel} &nbsp;|&nbsp; <b>Codigo usado:</b> {accessCodeLabel}
             </div>
-            {Number(reg?.payment?.paidAmount || 0) > 0 ? (
-              <div style={{ opacity: 0.85, marginBottom: 10 }}>
-                <b>Ya cobrado:</b> ${Number(reg.payment.paidAmount).toLocaleString("es-AR")}
-              </div>
-            ) : null}
+            <div style={{ opacity: 0.85, marginBottom: 10 }}>
+              <b>Total:</b> {money(totalARS)} &nbsp;|&nbsp;{" "}
+              {payStatus === "refunded" ? (
+                <>
+                  <b>Devuelto:</b> {refundedARS > 0 ? money(refundedARS) : "sin dato"}
+                  {reg?.payment?.refundScope === "camp"
+                    ? ` (solo el campa; productos pagos: ${money(paidARS)})`
+                    : ""}
+                </>
+              ) : (
+                <>
+                  <b>Pagado:</b> {money(paidARS)}
+                  {paidARS > 0 && paidARS < totalARS ? ` (falta ${money(totalARS - paidARS)})` : ""}
+                </>
+              )}
+            </div>
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <span><b>Pago:</b></span>
@@ -397,7 +421,9 @@ export default function Registro() {
       </div>
 
       {/* Solo superadmin: cambiar dias / cancelar */}
-      {isSuper ? <SuperAdminCard reg={reg} busy={busySuper} onAdjust={adjustDays} onRefund={refundRegistration} /> : null}
+      {isSuper ? (
+        <SuperAdminCard reg={reg} busy={busySuper} onAdjust={adjustDays} onRefund={refundRegistration} hasExtras={hasExtras} />
+      ) : null}
 
       {/* Integrantes */}
       <div className="card" style={{ marginTop: 12 }}>
@@ -428,12 +454,14 @@ function SuperAdminCard({
   reg,
   busy,
   onAdjust,
-  onRefund
+  onRefund,
+  hasExtras
 }: {
   reg: any;
   busy: boolean;
   onAdjust: (optionDays: string, daysDetail: string) => void;
-  onRefund: () => void;
+  onRefund: (scope: "all" | "camp") => void;
+  hasExtras: boolean;
 }) {
   const [optionDays, setOptionDays] = useState(String(reg.step1?.optionDays || "full"));
   const [oneDay, setOneDay] = useState(String(reg.step1?.oneDay || reg.step1?.daysDetail || "sabado"));
@@ -486,17 +514,32 @@ function SuperAdminCard({
 
       {status === "refunded" ? (
         <p style={{ fontWeight: 800, color: "#b91c1c" }}>
-          Cancelada y devuelta{reg.payment?.refundedBy ? ` por ${reg.payment.refundedBy}` : ""}.
+          Cancelada y devuelta{reg.payment?.refundScope === "camp" ? " (solo el campa)" : ""}
+          {reg.payment?.refundedBy ? ` por ${reg.payment.refundedBy}` : ""}.
         </p>
       ) : (
-        <button
-          className="btn danger"
-          type="button"
-          disabled={busy || status !== "approved"}
-          onClick={onRefund}
-        >
-          {busy ? "Procesando..." : "Cancelar inscripción y devolver el pago"}
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            className="btn danger"
+            type="button"
+            disabled={busy || status !== "approved"}
+            onClick={() => onRefund("all")}
+          >
+            {busy ? "Procesando..." : "Cancelar y devolver todo"}
+          </button>
+
+          {hasExtras ? (
+            <button
+              className="btn danger"
+              type="button"
+              disabled={busy || status !== "approved"}
+              onClick={() => onRefund("camp")}
+              title="Devuelve solo el campa: los productos quedan pagos y hay que entregarlos"
+            >
+              {busy ? "Procesando..." : "Cancelar y devolver solo el campa"}
+            </button>
+          ) : null}
+        </div>
       )}
 
       {status !== "approved" && status !== "refunded" ? (

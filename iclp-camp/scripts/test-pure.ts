@@ -8,6 +8,7 @@ import {
   normalizeDietRestrictions,
   normalizeDni,
   normalizePhoneAR,
+  refundAmountARS,
   resolveTierPrice,
   sanitizePosId
 } from "../lib/pure.ts";
@@ -165,3 +166,10 @@ assert.deepEqual(normalizeAttendeeDiet({ dietaryRestrictions: ["hipertension"] }
   dietaryRestrictions: ["hipertension"],
   diet: "Hipertensión"
 });
+
+// Devoluciones: "camp" deja pagos los productos, "all" devuelve todo
+assert.equal(refundAmountARS(50000, 12000, "camp"), 38000);
+assert.equal(refundAmountARS(50000, 12000, "all"), 50000);
+// Si solo compro productos no queda campa para devolver
+assert.equal(refundAmountARS(12000, 12000, "camp"), 0);
+assert.equal(refundAmountARS(0, 0, "all"), 0);

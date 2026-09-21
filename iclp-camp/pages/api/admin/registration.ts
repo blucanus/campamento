@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { connectDB } from "@/lib/db";
 import { Registration } from "@/models/Registration";
 import { requireStaff } from "@/lib/auth";
+import { registrationTotalARS } from "@/lib/pricing";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const admin = requireStaff(req);
@@ -31,6 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     ...reg,
-    primary: { name: primaryName, phone: primaryPhone, email: primaryEmail }
+    primary: { name: primaryName, phone: primaryPhone, email: primaryEmail },
+    // Cuanto vale hoy: las inscripciones viejas no guardan lo cobrado.
+    total: await registrationTotalARS(reg)
   });
 }

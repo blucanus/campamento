@@ -200,3 +200,13 @@ export function normalizeAttendeeDiet(attendee: unknown) {
     diet: hasDietaryRestrictions ? dietRestrictionsLabel(dietaryRestrictions) : "base"
   };
 }
+
+/**
+ * Cuanto se devuelve de una inscripcion paga. Con scope "camp" se devuelve solo
+ * el campa: los productos quedan pagos y hay que entregarlos igual.
+ */
+export function refundAmountARS(paid: number, extrasTotal: number, scope: "all" | "camp") {
+  const p = Math.max(0, Number(paid) || 0);
+  if (scope !== "camp") return p;
+  return Math.max(0, p - Math.max(0, Number(extrasTotal) || 0));
+}
