@@ -71,6 +71,47 @@ export async function createPreference(params: CreatePreferenceMulti | CreatePre
  * ponytail: usa el token general aunque el cobro haya salido por el QR; es la
  * misma cuenta y es el token con el que ya se consultan esos pagos.
  */
+const PAYMENT_TYPES: Record<string, string> = {
+  credit_card: "Tarjeta de crédito",
+  debit_card: "Tarjeta de débito",
+  account_money: "Dinero en cuenta",
+  bank_transfer: "Transferencia",
+  ticket: "Efectivo"
+};
+
+/**
+ * Con que se pago (es a donde vuelve la plata: Mercado Pago siempre devuelve al
+ * medio original) y cuanto se devolvio ya de ese pago.
+ */
+export async function getPaymentInfo(paymentId: string) {
+  const r = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
+    headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` }
+  });
+
+  const text = await r.text();
+  if (!r.ok) throw new Error(`MP payment ${paymentId}: ${text || r.status}`);
+
+  const p = (text ? JSON.parse(text) : {}) as {
+    payment_method_id?: string;
+    payment_type_id?: string;
+    transaction_amount_refunded?: number;
+    card?: { last_four_digits?: string };
+  };
+
+  const type = PAYMENT_TYPES[String(p.payment_type_id || "")] || String(p.payment_type_id || "");
+  const brand = String(p.payment_method_id || "").toUpperCase();
+  const last4 = String(p.card?.last_four_digits || "");
+
+  const parts = [type];
+  if (brand && brand !== "ACCOUNT_MONEY") parts.push(brand);
+  if (last4) parts.push(`****${last4}`);
+
+  return {
+    method: parts.filter(Boolean).join(" ").trim(),
+    refunded: Number(p.transaction_amount_refunded || 0)
+  };
+}
+
 /** Sin `amount` devuelve todo; con `amount` hace una devolucion parcial. */
 export async function refundPayment(paymentId: string, idempotencyKey: string, amount?: number) {
   const r = await fetch(

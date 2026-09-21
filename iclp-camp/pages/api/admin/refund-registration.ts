@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import { requireSuperAdmin } from "@/lib/auth";
 import { auditLog } from "@/lib/audit";
 import { env } from "@/lib/env";
-import { refundPayment } from "@/lib/mercadopago";
+import { getPaymentInfo, refundPayment } from "@/lib/mercadopago";
 import { registrationTotalARS } from "@/lib/pricing";
 import { refundAmountARS } from "@/lib/pure";
 import { Registration } from "@/models/Registration";
@@ -74,12 +74,22 @@ async function refundOne(req: NextApiRequest, admin: Actor, id: string, scope: S
 
   const refunded = Number(refund?.amount ?? amount) || amount;
 
+  let method = String(doc.payment?.method || "");
+  if (!method) {
+    try {
+      method = (await getPaymentInfo(paymentId)).method;
+    } catch {
+      // el medio de pago es informativo: no frena la devolucion
+    }
+  }
+
   doc.payment.status = "refunded";
   // ponytail: con scope "camp" la inscripcion queda cancelada pero los productos siguen
   // pagos y hay que entregarlos: se ven en la lista de admin, que no filtra devueltas.
   doc.payment.paidAmount = scope === "camp" ? extras : 0;
   doc.payment.refundedAmount = refunded;
   doc.payment.refundScope = scope;
+  doc.payment.method = method;
   doc.payment.refundedAt = new Date();
   doc.payment.refundedBy = admin.email;
   // El link viejo sigue siendo pagable: lo tiramos.
@@ -93,7 +103,7 @@ async function refundOne(req: NextApiRequest, admin: Actor, id: string, scope: S
     action: scope === "camp" ? "refund_registration_camp" : "refund_registration",
     entity: "Registration",
     entityId: id,
-    meta: { paymentId, refundId: refund?.id || "", amount: refunded, paid, extras, scope }
+    meta: { paymentId, refundId: refund?.id || "", amount: refunded, paid, extras, scope, method }
   });
 
   return { id, name, ok: true, amount: refunded };

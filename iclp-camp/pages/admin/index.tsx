@@ -221,6 +221,9 @@ export default function Admin() {
             <Link className="btn" href="/merch">➕ Comprar MERCH</Link>
             <Link className="btn secondary" href="/api/admin/export?format=csv">CSV</Link>
             <Link className="btn secondary" href="/api/admin/export?format=xlsx">Excel</Link>
+            <Link className="btn secondary" href={"/api/admin/export?kind=refunds&format=xlsx"}>
+              💸 Devoluciones
+            </Link>
           </div>
         </div>
 
